@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePlaylist } from '../context/PlaylistContext';
 import { useAuth } from '../context/AuthContext';
 import PLAYLIST_API from '../services/playlist';
+import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
 import data from '../data';
 import { toast } from 'react-toastify';
 import '../assets/styles/main.css';
 
 const CreatePlaylist = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
-  const { addPlaylist } = usePlaylist();
+  const { playlists, addPlaylist, updatePlaylist } = usePlaylist();
+  
+  const editPlaylistId = searchParams.get('edit');
+  const isEditMode = !!editPlaylistId;
   
   const [playlistData, setPlaylistData] = useState({
     name: '',
@@ -22,6 +27,38 @@ const CreatePlaylist = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Load playlist data for edit mode
+  useEffect(() => {
+    if (isEditMode && editPlaylistId) {
+      const playlistToEdit = playlists.find(p => p._id === editPlaylistId);
+      if (playlistToEdit) {
+        setPlaylistData({
+          name: playlistToEdit.name,
+          description: playlistToEdit.description || '',
+          songs: playlistToEdit.songs || []
+        });
+      } else {
+        // If playlist not found in cache, fetch from API
+        const fetchPlaylist = async () => {
+          try {
+            const response = await PLAYLIST_API.getPlaylistById(editPlaylistId);
+            const enrichedPlaylist = enrichPlaylistWithSongs(response);
+            setPlaylistData({
+              name: enrichedPlaylist.name,
+              description: enrichedPlaylist.description || '',
+              songs: enrichedPlaylist.songs || []
+            });
+          } catch (error) {
+            console.error('Error loading playlist for edit:', error);
+            toast.error('Failed to load playlist for editing');
+            navigate('/your-playlists');
+          }
+        };
+        fetchPlaylist();
+      }
+    }
+  }, [isEditMode, editPlaylistId, playlists, navigate]);
 
   const updatePlaylistInfo = (updates) => {
     setPlaylistData(prev => ({ ...prev, ...updates }));
@@ -68,8 +105,8 @@ const CreatePlaylist = () => {
   const handleAddSong = (song) => {
     const added = addSongToPlaylist(song);
     if (added) {
-      // Remove from search results if added to playlist
-      setSearchResults(prev => prev.filter(s => s.id !== song.id));
+      // Don't remove from search results, just let the UI update to show "Added" state
+      // The search results will now show "Added" button instead of "Add" button
     }
   };
 
@@ -102,16 +139,31 @@ const CreatePlaylist = () => {
         songs: playlistData.songs.map(song => song.id)
       };
       
-      const response = await PLAYLIST_API.createPlaylist(playlistPayload);
-      
-      if (response.success) {
-        addPlaylist(response.playlist);
-        toast.success('Playlist created successfully!');
-        navigate('/your-playlists');
+      if (isEditMode) {
+        // Update existing playlist
+        const response = await PLAYLIST_API.updatePlaylist(editPlaylistId, playlistPayload);
+        if (response.success) {
+          // Update the playlist in context with enriched data
+          updatePlaylist(editPlaylistId, response.playlist);
+          toast.success('Playlist updated successfully!');
+          // Navigate back with state to force refresh
+          navigate(`/playlist/${editPlaylistId}`, { 
+            state: { forceRefresh: true },
+            replace: true 
+          });
+        }
+      } else {
+        // Create new playlist
+        const response = await PLAYLIST_API.createPlaylist(playlistPayload);
+        if (response.success) {
+          addPlaylist(response.playlist);
+          toast.success('Playlist created successfully!');
+          navigate('/your-playlists');
+        }
       }
     } catch (error) {
-      console.error('Error creating playlist:', error);
-      toast.error('Failed to create playlist');
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} playlist:`, error);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} playlist`);
     } finally {
       setIsSaving(false);
     }
@@ -140,7 +192,9 @@ const CreatePlaylist = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1e1e2a] to-[#0f0f1a] text-white p-6 ml-64">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Create New Playlist</h1>
+        <h1 className="text-3xl font-bold mb-8">
+          {isEditMode ? 'Edit Playlist' : 'Create New Playlist'}
+        </h1>
         
         {/* Playlist Info */}
         <div className="bg-[#181a2a] rounded-lg p-6 mb-8">
@@ -197,17 +251,30 @@ const CreatePlaylist = () => {
                   {playlistData.songs.length} {playlistData.songs.length === 1 ? 'song' : 'songs'}
                 </div>
                 
-                <button
-                  onClick={handleSavePlaylist}
-                  disabled={isSaving || !playlistData.name.trim() || playlistData.songs.length === 0}
-                  className={`px-6 py-2 rounded-full font-medium ${
-                    isSaving || !playlistData.name.trim() || playlistData.songs.length === 0
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-pink-600 hover:bg-pink-700'
-                  } text-white transition-colors`}
-                >
-                  {isSaving ? 'Saving...' : 'Save Playlist'}
-                </button>
+                <div className="flex gap-3">
+                  {isEditMode && (
+                    <button
+                      onClick={() => navigate(`/playlist/${editPlaylistId}`)}
+                      className="px-6 py-2 bg-transparent border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white rounded-full font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSavePlaylist}
+                    disabled={isSaving || !playlistData.name.trim() || playlistData.songs.length === 0}
+                    className={`px-6 py-2 rounded-full font-medium ${
+                      isSaving || !playlistData.name.trim() || playlistData.songs.length === 0
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-pink-600 hover:bg-pink-700'
+                    } text-white transition-colors`}
+                  >
+                    {isSaving 
+                      ? (isEditMode ? 'Updating...' : 'Saving...') 
+                      : (isEditMode ? 'Update Playlist' : 'Save Playlist')
+                    }
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -314,6 +381,8 @@ const CreatePlaylist = () => {
               <div className="space-y-2">
                 {searchResults.map((song) => {
                   const artist = data.artists.find(a => a.id === song.artistId);
+                  const isAlreadyAdded = playlistData.songs.some(s => s.id === song.id);
+                  
                   return (
                     <div key={song.id} className="flex items-center justify-between p-3 hover:bg-[#2d2240] rounded-lg">
                       <div className="flex items-center gap-4 flex-1">
@@ -332,12 +401,25 @@ const CreatePlaylist = () => {
                       <div className="text-sm text-gray-400 w-16 text-right">
                         {formatDuration(song.duration || 180)}
                       </div>
-                      <button
-                        onClick={() => handleAddSong(song)}
-                        className="ml-4 px-4 py-1.5 bg-transparent border border-gray-600 hover:border-pink-500 hover:text-pink-500 text-white text-sm rounded-full transition-colors"
-                      >
-                        Add
-                      </button>
+                      {isAlreadyAdded ? (
+                        <button
+                          onClick={() => handleRemoveSong(song.id)}
+                          className="ml-4 px-4 py-1.5 bg-green-600/20 border border-green-500 hover:border-red-500 hover:bg-red-600/20 hover:text-red-400 text-green-400 text-sm rounded-full flex items-center gap-2 transition-colors"
+                          title="Remove from playlist"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          Added
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAddSong(song)}
+                          className="ml-4 px-4 py-1.5 bg-transparent border border-gray-600 hover:border-pink-500 hover:text-pink-500 text-white text-sm rounded-full transition-colors"
+                        >
+                          Add
+                        </button>
+                      )}
                     </div>
                   );
                 })}

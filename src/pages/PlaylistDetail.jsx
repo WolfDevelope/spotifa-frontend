@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { usePlaylist } from '../context/PlaylistContext';
+import { useMusic } from '../context/MusicContext';
 import PLAYLIST_API from '../services/playlist';
 import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
 import DeletePlaylistModal from '../components/DeletePlaylistModal';
@@ -10,11 +11,19 @@ import { toast } from 'react-toastify';
 const PlaylistDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { playlists, isInitialized, removePlaylist } = usePlaylist();
+  const { setPlaylistAndPlay, currentPlaylist, currentTrackIndex, isPlaying: musicIsPlaying, setIsPlaying } = useMusic();
   const [playlist, setPlaylist] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const isDeleting = useRef(false);
+  
+  // Check if this playlist is currently playing
+  const isCurrentPlaylistPlaying = playlist && currentPlaylist.length > 0 && 
+    currentPlaylist[0]?.playlistId === playlist._id && musicIsPlaying;
+  
+  // Check if we need to force refresh from location state
+  const shouldForceRefresh = location.state?.forceRefresh;
 
   useEffect(() => {
     let isMounted = true;
@@ -26,22 +35,31 @@ const PlaylistDetail = () => {
       }
 
       try {
-        // First try to find in cached playlists
+        // If force refresh is requested, skip cache and fetch from API
+        if (shouldForceRefresh) {
+          const response = await PLAYLIST_API.getPlaylistById(id);
+          const enrichedPlaylist = enrichPlaylistWithSongs(response);
+          if (isMounted) setPlaylist(enrichedPlaylist);
+          // Clear the force refresh state
+          navigate(location.pathname, { replace: true, state: {} });
+          return;
+        }
+
+        // Always try to find in cached playlists first
         const cachedPlaylist = playlists.find(p => p._id === id);
-        if (cachedPlaylist) {
+        if (cachedPlaylist && cachedPlaylist.songs) {
           if (isMounted) setPlaylist(cachedPlaylist);
           return;
         }
 
         // If playlists are initialized but playlist not found, it was likely deleted
-        if (isInitialized) {
+        if (isInitialized && playlists.length > 0 && !cachedPlaylist) {
           console.log('Playlist not found in initialized cache, redirecting...');
           if (isMounted) navigate('/your-playlists', { replace: true });
           return;
         }
 
-        // Only fetch from API if playlists haven't been initialized yet
-        // This prevents unnecessary API calls for deleted playlists
+        // Fetch from API if not in cache or cache doesn't have full data
         const response = await PLAYLIST_API.getPlaylistById(id);
         const enrichedPlaylist = enrichPlaylistWithSongs(response);
         if (isMounted) setPlaylist(enrichedPlaylist);
@@ -66,11 +84,26 @@ const PlaylistDetail = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, playlists, isInitialized, navigate]);
+  }, [id, playlists, isInitialized, navigate, shouldForceRefresh, location.pathname]);
 
   const handlePlayClick = () => {
-    setIsPlaying(!isPlaying);
-    // Here you would typically handle the actual music playback
+    if (!playlist || !playlist.songs || playlist.songs.length === 0) {
+      toast.error('No songs in this playlist to play');
+      return;
+    }
+
+    if (isCurrentPlaylistPlaying) {
+      // If this playlist is currently playing, pause it
+      setIsPlaying(false);
+    } else {
+      // Play this playlist from the beginning
+      const playlistSongs = playlist.songs.map(song => ({
+        ...song,
+        playlistId: playlist._id,
+        playlistName: playlist.name
+      }));
+      setPlaylistAndPlay(playlistSongs, 0);
+    }
   };
 
   const handleDeleteClick = () => {
@@ -95,6 +128,20 @@ const PlaylistDetail = () => {
 
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
+  };
+
+  const handleSongClick = (songIndex) => {
+    if (!playlist || !playlist.songs || playlist.songs.length === 0) {
+      return;
+    }
+
+    const playlistSongs = playlist.songs.map(song => ({
+      ...song,
+      playlistId: playlist._id,
+      playlistName: playlist.name
+    }));
+    
+    setPlaylistAndPlay(playlistSongs, songIndex);
   };
 
   const formatDate = (dateString) => {
@@ -168,7 +215,7 @@ const PlaylistDetail = () => {
                 onClick={handlePlayClick}
                 className="px-8 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-full font-medium flex items-center gap-2"
               >
-                {isPlaying ? (
+                {isCurrentPlaylistPlaying ? (
                   <>
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -186,7 +233,7 @@ const PlaylistDetail = () => {
               </button>
               
               <button
-                onClick={() => navigate(`/create-playlist?edit=${playlist.id}`)}
+                onClick={() => navigate(`/create-playlist?edit=${playlist._id}`)}
                 className="px-6 py-3 bg-transparent border border-gray-600 hover:border-gray-400 text-white rounded-full font-medium"
               >
                 Edit
@@ -228,13 +275,29 @@ const PlaylistDetail = () => {
             <div className="divide-y divide-gray-800">
               {playlist.songs.map((song, index) => {
                 const artist = data.artists.find(a => a.id === song.artistId);
+                const isCurrentSong = currentPlaylist.length > 0 && 
+                  currentPlaylist[0]?.playlistId === playlist._id && 
+                  currentTrackIndex === index && musicIsPlaying;
+                
                 return (
                   <div 
                     key={song.id} 
-                    className="grid grid-cols-12 gap-4 items-center p-3 hover:bg-[#2d2240] rounded-lg group"
+                    className={`grid grid-cols-12 gap-4 items-center p-3 hover:bg-[#2d2240] rounded-lg group cursor-pointer ${
+                      isCurrentSong ? 'bg-[#2d2240]' : ''
+                    }`}
+                    onClick={() => handleSongClick(index)}
                   >
                     <div className="col-span-1 text-gray-400 text-center group-hover:text-white">
-                      {index + 1}
+                      {isCurrentSong ? (
+                        <div className="flex items-center justify-center">
+                          <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM15.657 6.343a1 1 0 011.414 0A9.972 9.972 0 0119 12a9.972 9.972 0 01-1.929 5.657 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 12a7.971 7.971 0 00-1.343-4.243 1 1 0 010-1.414z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M13.828 8.172a1 1 0 011.414 0A5.983 5.983 0 0117 12a5.983 5.983 0 01-1.758 3.828 1 1 0 11-1.414-1.414A3.987 3.987 0 0015 12a3.987 3.987 0 00-1.172-2.828 1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      ) : (
+                        index + 1
+                      )}
                     </div>
                     <div className="col-span-5 flex items-center gap-4">
                       <img 
@@ -243,7 +306,11 @@ const PlaylistDetail = () => {
                         className="w-10 h-10 rounded object-cover"
                       />
                       <div>
-                        <div className="font-medium group-hover:text-pink-400">{song.title}</div>
+                        <div className={`font-medium group-hover:text-pink-400 ${
+                          isCurrentSong ? 'text-pink-500' : ''
+                        }`}>
+                          {song.title}
+                        </div>
                       </div>
                     </div>
                     <div className="col-span-4 text-gray-400 group-hover:text-white">

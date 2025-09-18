@@ -62,8 +62,9 @@ export const PlaylistProvider = ({ children }) => {
   };
 
   const updatePlaylist = (playlistId, updatedData) => {
+    const enrichedData = enrichPlaylistsWithSongs([updatedData])[0];
     setPlaylists(prev => 
-      prev.map(p => p._id === playlistId ? { ...p, ...updatedData } : p)
+      prev.map(p => p._id === playlistId ? { ...p, ...enrichedData } : p)
     );
   };
 
