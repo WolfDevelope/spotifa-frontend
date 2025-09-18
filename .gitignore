@@ -1,0 +1,50 @@
+# =========================
+# Node.js / React defaults
+# =========================
+
+# Dependencies
+/node_modules
+
+# Production build
+/build
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor & system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Custom for Spotifa
+# =========================
+
+# Bỏ qua toàn bộ video
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Bỏ qua folder chứa video
+/public/assets/video/
+
+# Bỏ qua audio nặng
+*.mp3
+*.wav
+*.flac
+*.ogg
+
+# Nếu bạn có cache riêng
+/.cache

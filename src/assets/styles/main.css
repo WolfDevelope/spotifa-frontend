@@ -1,0 +1,87 @@
+.heart-outline {
+    fill: none;
+    stroke: #f472b6;
+    stroke-width: 2;
+    transition: fill 0.2s;
+  }
+  .heart-hover:hover .heart-outline {
+    fill: #f472b6;
+  }
+  .play-btn {
+    width: 1.75rem; /* 28px */
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ec4899; /* Tailwind pink-500 */
+    border-radius: 9999px;
+    transition: background 0.2s;
+    margin-right: 0.5rem;
+    border: none;
+    outline: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .play-btn:hover {
+    background-color: #db2777; /* Tailwind pink-600 */
+  }
+  .play-btn svg {
+    width: 1rem;
+    height: 1rem;
+    color: #fff;
+  }
+  .play-btn-row {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #ec4899;
+    border-radius: 9999px;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .play-btn-row:hover {
+    background: #db2777;
+  }
+  .flex.gap-2.items-center:hover .play-btn-row {
+    display: flex;
+  }
+  .play-btn-row svg {
+    width: 1rem;
+    height: 1rem;
+    color: #fff;
+  }
+  
+/* Custom Splide Arrows */
+.splide__arrow {
+  background: #23172b !important;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  width: 50px !important;
+  height: 50px !important;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  transition: background 0.2s, color 0.2s;
+  border: 2px solid #23172b;
+  color: #fff;
+}
+
+.splide__arrow--prev {
+  left: -60px !important;  /* Đẩy ra ngoài slide */
+} 
+
+.splide__arrow--next {
+  right: -60px !important; /* Đẩy ra ngoài slide */
+}
+
+.splide__arrow:hover {
+  background: #d75172 !important; /* Màu hồng */
+  border-color: #d75172;
+  color: #fff;
+}
