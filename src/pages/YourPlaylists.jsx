@@ -1,10 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../context/PlaylistContext';
+import { useAuth } from '../context/AuthContext';
+import PLAYLIST_API from '../services/playlist';
+import DeletePlaylistModal from '../components/DeletePlaylistModal';
+import { toast } from 'react-toastify';
 
 const YourPlaylists = () => {
   const navigate = useNavigate();
-  const { userPlaylists, deletePlaylist } = usePlaylist();
+  const { currentUser } = useAuth();
+  const { playlists, isLoading, removePlaylist } = usePlaylist();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [playlistToDelete, setPlaylistToDelete] = useState(null);
 
   useEffect(() => {
     // Scroll to top when component mounts
@@ -15,11 +22,30 @@ const YourPlaylists = () => {
     navigate(`/playlist/${playlistId}`);
   };
 
-  const handleDeletePlaylist = (e, playlistId) => {
+  const handleDeleteClick = (e, playlist) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this playlist?')) {
-      deletePlaylist(playlistId);
+    setPlaylistToDelete(playlist);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!playlistToDelete) return;
+    
+    try {
+      await PLAYLIST_API.deletePlaylist(playlistToDelete._id);
+      removePlaylist(playlistToDelete._id);
+      toast.success('Playlist deleted successfully');
+      setShowDeleteModal(false);
+      setPlaylistToDelete(null);
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
+      toast.error('Failed to delete playlist');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setPlaylistToDelete(null);
   };
 
   return (
@@ -35,7 +61,11 @@ const YourPlaylists = () => {
           </button>
         </div>
 
-        {userPlaylists.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+          </div>
+        ) : playlists.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-gray-400 text-lg mb-4">You don't have any playlists yet</div>
             <button
@@ -47,10 +77,10 @@ const YourPlaylists = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {userPlaylists.map((playlist) => (
+            {playlists.map((playlist) => (
               <div
-                key={playlist.id}
-                onClick={() => handlePlaylistClick(playlist.id)}
+                key={playlist._id}
+                onClick={() => handlePlaylistClick(playlist._id)}
                 className="bg-[#181a2a] rounded-lg overflow-hidden cursor-pointer hover:bg-[#2d2240] transition-colors group relative"
               >
                 <div className="relative">
@@ -99,7 +129,7 @@ const YourPlaylists = () => {
                   <div className="flex justify-between items-center mt-3 text-sm text-gray-400">
                     <span>{playlist.songs.length} songs</span>
                     <button
-                      onClick={(e) => handleDeletePlaylist(e, playlist.id)}
+                      onClick={(e) => handleDeleteClick(e, playlist)}
                       className="text-gray-400 hover:text-red-400 p-1"
                       title="Delete playlist"
                     >
@@ -114,6 +144,14 @@ const YourPlaylists = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeletePlaylistModal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        playlistName={playlistToDelete?.name || ''}
+      />
     </div>
   );
 };

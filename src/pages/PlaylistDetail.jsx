@@ -1,36 +1,100 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../context/PlaylistContext';
+import PLAYLIST_API from '../services/playlist';
+import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
+import DeletePlaylistModal from '../components/DeletePlaylistModal';
 import data from '../data';
+import { toast } from 'react-toastify';
 
 const PlaylistDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { userPlaylists, deletePlaylist } = usePlaylist();
+  const { playlists, isInitialized, removePlaylist } = usePlaylist();
   const [playlist, setPlaylist] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const isDeleting = useRef(false);
 
   useEffect(() => {
-    // Find the playlist by ID
-    const foundPlaylist = userPlaylists.find(p => p.id === id);
-    if (foundPlaylist) {
-      setPlaylist(foundPlaylist);
-    } else {
-      // Redirect to playlists page if playlist not found
-      navigate('/your-playlists');
+    let isMounted = true;
+
+    const loadPlaylistDetail = async () => {
+      // Skip loading if we're in the process of deleting
+      if (isDeleting.current) {
+        return;
+      }
+
+      try {
+        // First try to find in cached playlists
+        const cachedPlaylist = playlists.find(p => p._id === id);
+        if (cachedPlaylist) {
+          if (isMounted) setPlaylist(cachedPlaylist);
+          return;
+        }
+
+        // If playlists are initialized but playlist not found, it was likely deleted
+        if (isInitialized) {
+          console.log('Playlist not found in initialized cache, redirecting...');
+          if (isMounted) navigate('/your-playlists', { replace: true });
+          return;
+        }
+
+        // Only fetch from API if playlists haven't been initialized yet
+        // This prevents unnecessary API calls for deleted playlists
+        const response = await PLAYLIST_API.getPlaylistById(id);
+        const enrichedPlaylist = enrichPlaylistWithSongs(response);
+        if (isMounted) setPlaylist(enrichedPlaylist);
+      } catch (error) {
+        if (!isMounted || isDeleting.current) return;
+        
+        console.error('Error loading playlist:', error);
+        if (error.message === 'Playlist not found') {
+          // Don't show toast for deleted playlists, just redirect silently
+          console.log('Playlist was deleted, redirecting silently...');
+        } else {
+          toast.error('Failed to load playlist');
+        }
+        navigate('/your-playlists', { replace: true });
+      }
+    };
+
+    if (id) {
+      loadPlaylistDetail();
     }
-  }, [id, userPlaylists, navigate]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, playlists, isInitialized, navigate]);
 
   const handlePlayClick = () => {
     setIsPlaying(!isPlaying);
     // Here you would typically handle the actual music playback
   };
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this playlist?')) {
-      deletePlaylist(id);
-      navigate('/your-playlists');
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      isDeleting.current = true; // Mark as deleting to prevent further API calls
+      setShowDeleteModal(false);
+      await PLAYLIST_API.deletePlaylist(id);
+      removePlaylist(id);
+      toast.success('Playlist deleted successfully');
+      // Navigate immediately and prevent further loading
+      navigate('/your-playlists', { replace: true });
+    } catch (error) {
+      isDeleting.current = false; // Reset on error
+      console.error('Error deleting playlist:', error);
+      toast.error('Failed to delete playlist');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
   };
 
   const formatDate = (dateString) => {
@@ -129,7 +193,7 @@ const PlaylistDetail = () => {
               </button>
               
               <button
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 className="p-3 text-gray-400 hover:text-red-400 transition-colors"
                 title="Delete playlist"
               >
@@ -195,6 +259,14 @@ const PlaylistDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeletePlaylistModal
+        isOpen={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        playlistName={playlist?.name || ''}
+      />
     </div>
   );
 };

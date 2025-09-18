@@ -1,124 +1,88 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import PLAYLIST_API from '../services/playlist';
+import { enrichPlaylistsWithSongs } from '../utils/playlistUtils';
 
 const PlaylistContext = createContext();
 
 export const usePlaylist = () => {
-  return useContext(PlaylistContext);
+  const context = useContext(PlaylistContext);
+  if (!context) {
+    throw new Error('usePlaylist must be used within a PlaylistProvider');
+  }
+  return context;
 };
 
 export const PlaylistProvider = ({ children }) => {
-  const [currentPlaylist, setCurrentPlaylist] = useState({
-    name: '',
-    description: '',
-    songs: [],
-    cover: '/assets/images/default-playlist-cover.jpg'
-  });
-  const [userPlaylists, setUserPlaylists] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { currentUser } = useAuth();
 
-  // Load user's playlists from localStorage on component mount
+  // Load playlists when user changes
   useEffect(() => {
-    const storedPlaylists = localStorage.getItem('userPlaylists');
-    if (storedPlaylists) {
-      setUserPlaylists(JSON.parse(storedPlaylists));
+    if (currentUser) {
+      // Reset state and load playlists for new user
+      setIsInitialized(false);
+      loadPlaylists();
+    } else {
+      // Clear playlists when user logs out
+      setPlaylists([]);
+      setIsInitialized(false);
     }
-  }, []);
+  }, [currentUser]);
 
-  // Save playlists to localStorage whenever they change
-  useEffect(() => {
-    if (userPlaylists.length > 0) {
-      localStorage.setItem('userPlaylists', JSON.stringify(userPlaylists));
-    }
-  }, [userPlaylists]);
-
-  const createNewPlaylist = () => {
-    setCurrentPlaylist({
-      name: '',
-      description: '',
-      songs: [],
-      cover: '/assets/images/default-playlist-cover.jpg'
-    });
-  };
-
-  const updatePlaylistInfo = (updates) => {
-    setCurrentPlaylist(prev => ({
-      ...prev,
-      ...updates
-    }));
-  };
-
-  const addSongToPlaylist = (song) => {
-    if (!currentPlaylist.songs.some(s => s.id === song.id)) {
-      setCurrentPlaylist(prev => ({
-        ...prev,
-        songs: [...prev.songs, song]
-      }));
-      return true;
-    }
-    return false;
-  };
-
-  const removeSongFromPlaylist = (songId) => {
-    setCurrentPlaylist(prev => ({
-      ...prev,
-      songs: prev.songs.filter(song => song.id !== songId)
-    }));
-  };
-
-  const savePlaylist = () => {
-    if (!currentPlaylist.name.trim()) return false;
+  const loadPlaylists = async () => {
+    if (isLoading) return;
     
-    const playlistToSave = {
-      ...currentPlaylist,
-      id: `playlist-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const updatedPlaylists = [...userPlaylists, playlistToSave];
-    setUserPlaylists(updatedPlaylists);
-    localStorage.setItem('userPlaylists', JSON.stringify(updatedPlaylists));
-    
-    // Reset current playlist
-    createNewPlaylist();
-    return true;
-  };
-
-  const deletePlaylist = (playlistId) => {
-    const updatedPlaylists = userPlaylists.filter(playlist => playlist.id !== playlistId);
-    setUserPlaylists(updatedPlaylists);
-    localStorage.setItem('userPlaylists', JSON.stringify(updatedPlaylists));
-  };
-
-  const searchSongs = (query, allSongs) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
+    setIsLoading(true);
+    try {
+      if (currentUser) {
+        const response = await PLAYLIST_API.getMyPlaylists();
+        const userPlaylists = response.playlists || [];
+        // Enrich playlists with full song details from local data
+        const enrichedPlaylists = enrichPlaylistsWithSongs(userPlaylists);
+        setPlaylists(enrichedPlaylists);
+      }
+      setIsInitialized(true);
+    } catch (error) {
+      console.error('Error loading playlists:', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    const results = allSongs.filter(song => 
-      song.title.toLowerCase().includes(query.toLowerCase()) ||
-      (song.artist && song.artist.toLowerCase().includes(query.toLowerCase()))
+  };
+
+  const addPlaylist = (playlist) => {
+    const enrichedPlaylist = enrichPlaylistsWithSongs([playlist])[0];
+    setPlaylists(prev => [...prev, enrichedPlaylist]);
+  };
+
+  const removePlaylist = (playlistId) => {
+    setPlaylists(prev => prev.filter(p => p._id !== playlistId));
+  };
+
+  const updatePlaylist = (playlistId, updatedData) => {
+    setPlaylists(prev => 
+      prev.map(p => p._id === playlistId ? { ...p, ...updatedData } : p)
     );
-    
-    setSearchResults(results);
+  };
+
+  const refreshPlaylists = () => {
+    if (currentUser) {
+      setIsInitialized(false);
+      loadPlaylists();
+    }
   };
 
   const value = {
-    currentPlaylist,
-    userPlaylists,
-    searchQuery,
-    searchResults,
-    setSearchQuery,
-    createNewPlaylist,
-    updatePlaylistInfo,
-    addSongToPlaylist,
-    removeSongFromPlaylist,
-    savePlaylist,
-    deletePlaylist,
-    searchSongs,
-    setSearchResults
+    playlists,
+    isLoading,
+    isInitialized,
+    addPlaylist,
+    removePlaylist,
+    updatePlaylist,
+    refreshPlaylists,
+    loadPlaylists
   };
 
   return (
@@ -127,5 +91,3 @@ export const PlaylistProvider = ({ children }) => {
     </PlaylistContext.Provider>
   );
 };
-
-export default PlaylistContext;

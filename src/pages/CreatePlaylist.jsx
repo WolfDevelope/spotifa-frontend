@@ -1,38 +1,68 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../context/PlaylistContext';
+import { useAuth } from '../context/AuthContext';
+import PLAYLIST_API from '../services/playlist';
 import data from '../data';
+import { toast } from 'react-toastify';
 import '../assets/styles/main.css';
 
 const CreatePlaylist = () => {
   const navigate = useNavigate();
-  const {
-    currentPlaylist,
-    updatePlaylistInfo,
-    addSongToPlaylist,
-    removeSongFromPlaylist,
-    savePlaylist,
-    searchQuery,
-    setSearchQuery,
-    searchSongs,
-    searchResults,
-    setSearchResults
-  } = usePlaylist();
+  const { currentUser } = useAuth();
+  const { addPlaylist } = usePlaylist();
+  
+  const [playlistData, setPlaylistData] = useState({
+    name: '',
+    description: '',
+    songs: []
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      setSearchQuery('');
-      searchSongs('', []);
-    };
-  }, [setSearchQuery]);
+  const updatePlaylistInfo = (updates) => {
+    setPlaylistData(prev => ({ ...prev, ...updates }));
+  };
+
+  const addSongToPlaylist = (song) => {
+    if (!playlistData.songs.some(s => s.id === song.id)) {
+      setPlaylistData(prev => ({
+        ...prev,
+        songs: [...prev.songs, song]
+      }));
+      return true;
+    }
+    return false;
+  };
+
+  const removeSongFromPlaylist = (songId) => {
+    setPlaylistData(prev => ({
+      ...prev,
+      songs: prev.songs.filter(song => song.id !== songId)
+    }));
+  };
+
+  const searchSongs = (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const results = data.songs.filter(song => 
+      song.title.toLowerCase().includes(query.toLowerCase()) ||
+      (song.artist && song.artist.toLowerCase().includes(query.toLowerCase()))
+    );
+    
+    setSearchResults(results);
+  };
 
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    searchSongs(query, data.songs);
+    searchSongs(query);
   };
 
   const handleAddSong = (song) => {
@@ -47,32 +77,44 @@ const CreatePlaylist = () => {
     removeSongFromPlaylist(songId);
   };
 
-  const handleSavePlaylist = () => {
-    if (!currentPlaylist.name.trim()) {
-      alert('Please enter a playlist name');
+  const handleSavePlaylist = async () => {
+    if (!playlistData.name.trim()) {
+      toast.error('Please enter a playlist name');
       return;
     }
-
-    if (currentPlaylist.songs.length === 0) {
-      alert('Please add at least one song to the playlist');
+    
+    if (playlistData.songs.length === 0) {
+      toast.error('Please add at least one song to the playlist');
       return;
     }
-
+    
+    if (!currentUser) {
+      toast.error('Please login to create playlists');
+      return;
+    }
+    
     setIsSaving(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      const saved = savePlaylist();
-      setIsSaving(false);
+    try {
+      const playlistPayload = {
+        name: playlistData.name,
+        description: playlistData.description,
+        songs: playlistData.songs.map(song => song.id)
+      };
       
-      if (saved) {
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          navigate('/your-playlists');
-        }, 1500);
+      const response = await PLAYLIST_API.createPlaylist(playlistPayload);
+      
+      if (response.success) {
+        addPlaylist(response.playlist);
+        toast.success('Playlist created successfully!');
+        navigate('/your-playlists');
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+      toast.error('Failed to create playlist');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Format duration from MM:SS string or seconds to MM:SS
@@ -104,10 +146,10 @@ const CreatePlaylist = () => {
         <div className="bg-[#181a2a] rounded-lg p-6 mb-8">
           <div className="flex gap-6">
             <div className="w-48 h-48 bg-gradient-to-br from-pink-600 to-purple-700 rounded-lg overflow-hidden flex-shrink-0">
-              {currentPlaylist.songs.length > 0 ? (
+              {playlistData.songs.length > 0 ? (
                 <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
                   {Array.from({ length: 4 }).map((_, index) => {
-                    const song = currentPlaylist.songs[index];
+                    const song = playlistData.songs[index];
                     return song ? (
                       <div key={index} className="relative overflow-hidden">
                         <img 
@@ -136,13 +178,13 @@ const CreatePlaylist = () => {
               <div className="mb-4">
                 <input
                   type="text"
-                  value={currentPlaylist.name}
+                  value={playlistData.name}
                   onChange={(e) => updatePlaylistInfo({ name: e.target.value })}
                   className="w-full bg-transparent text-4xl font-bold mb-2 text-white placeholder-gray-500 focus:outline-none"
                   placeholder="New Playlist"
                 />
                 <textarea
-                  value={currentPlaylist.description}
+                  value={playlistData.description}
                   onChange={(e) => updatePlaylistInfo({ description: e.target.value })}
                   className="w-full bg-transparent text-gray-300 placeholder-gray-500 focus:outline-none resize-none"
                   placeholder="Add an optional description"
@@ -152,14 +194,14 @@ const CreatePlaylist = () => {
               
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-gray-400">
-                  {currentPlaylist.songs.length} {currentPlaylist.songs.length === 1 ? 'song' : 'songs'}
+                  {playlistData.songs.length} {playlistData.songs.length === 1 ? 'song' : 'songs'}
                 </div>
                 
                 <button
                   onClick={handleSavePlaylist}
-                  disabled={isSaving || !currentPlaylist.name.trim() || currentPlaylist.songs.length === 0}
+                  disabled={isSaving || !playlistData.name.trim() || playlistData.songs.length === 0}
                   className={`px-6 py-2 rounded-full font-medium ${
-                    isSaving || !currentPlaylist.name.trim() || currentPlaylist.songs.length === 0
+                    isSaving || !playlistData.name.trim() || playlistData.songs.length === 0
                       ? 'bg-gray-600 cursor-not-allowed'
                       : 'bg-pink-600 hover:bg-pink-700'
                   } text-white transition-colors`}
@@ -173,7 +215,7 @@ const CreatePlaylist = () => {
         
         {/* Selected Songs */}
         <div className="bg-[#181a2a] rounded-lg overflow-hidden">
-            {currentPlaylist.songs.length > 0 ? (
+            {playlistData.songs.length > 0 ? (
               <div className="w-full">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-800 text-gray-400 text-sm font-medium">
@@ -185,7 +227,7 @@ const CreatePlaylist = () => {
                 
                 {/* Song Rows */}
                 <div className="divide-y divide-gray-800">
-                  {currentPlaylist.songs.map((song, index) => {
+                  {playlistData.songs.map((song, index) => {
                     const artist = data.artists.find(a => a.id === song.artistId);
                     const album = data.albums.find(a => a.id === song.albumId);
                     
