@@ -1,36 +1,24 @@
 // components/LoginModal.jsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const LoginModal = ({ onClose, onLogin }) => {
+  const { login, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await fetch(
-        `https://mindx-mockup-server.vercel.app/api/resources/Melodies%20Web%20Accounts?apiKey=6852b3cd6df26a3a2bf435cd`
-      );
-      const responseData = await res.json();
-      const users = responseData?.data?.data;
+    if (!email || !password) return;
 
-      const user = users.find(
-        (u) => u.email === email && u.password === password
-      );
-
-      if (user) {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        onLogin(user);
-        onClose(); // Đóng modal khi login thành công
-      } else {
-        alert('Email hoặc mật khẩu không đúng');
-      }
-    } catch (err) {
-      console.error('Lỗi:', err);
-      alert('Không thể kết nối máy chủ');
+    const result = await login(email, password);
+    if (result.success) {
+      onLogin(); // Gọi callback để thông báo login thành công
+      onClose(); // Đóng modal khi login thành công
     }
+    // Lỗi đã được xử lý trong AuthContext với toast
   };
 
   return (
