@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useMusic } from './context/MusicContext';
 import { PlaylistProvider } from './context/PlaylistContext';
+import { useAdmin } from './context/AdminContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import musicService from './services/musicService';
@@ -31,10 +32,12 @@ import CreatePlaylist from './pages/CreatePlaylist';
 import YourPlaylists from './pages/YourPlaylists';
 import PlaylistDetail from './pages/PlaylistDetail';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 const App = () => {
   const location = useLocation();
   const { isAuthenticated, currentUser } = useAuth();
+  const { isAdmin } = useAdmin();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState({
     songs: [],
@@ -119,6 +122,8 @@ const App = () => {
                   <Route path="/your-playlists" element={<YourPlaylists />} />
                   <Route path="/playlist/:id" element={<PlaylistDetail />} />
                   <Route path="/account" element={<Account />} />
+                  {/* Admin routes */}
+                  {isAdmin && <Route path="/admin" element={<AdminDashboard />} />}
                 </Route>
                 
                 {/* 404 - Not Found */}

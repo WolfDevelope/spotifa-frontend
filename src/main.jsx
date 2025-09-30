@@ -7,17 +7,20 @@ import { MusicProvider } from './context/MusicContext';
 import { AuthProvider } from './context/AuthContext';
 import { PlaylistProvider } from './context/PlaylistContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import { AdminProvider } from './context/AdminContext';
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Router>
       <AuthProvider>
-        <MusicProvider>
-          <FavoritesProvider>
-            <PlaylistProvider>
-              <App />
-            </PlaylistProvider>
-          </FavoritesProvider>
-        </MusicProvider>
+        <AdminProvider>
+          <MusicProvider>
+            <FavoritesProvider>
+              <PlaylistProvider>
+                <App />
+              </PlaylistProvider>
+            </FavoritesProvider>
+          </MusicProvider>
+        </AdminProvider>
       </AuthProvider>
     </Router>
   </StrictMode>

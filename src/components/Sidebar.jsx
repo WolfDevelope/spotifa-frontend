@@ -2,11 +2,13 @@ import React from 'react';
 import '../assets/styles/main.css';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAdmin } from '../context/AdminContext';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, logout } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const handleLogout = async () => {
     await logout();
@@ -101,6 +103,19 @@ const Sidebar = () => {
             <span className="text-pink-400">＋</span> Add playlist
           </button>
         </div>
+
+        {/* Admin group */}
+        {isAdmin && (
+          <div className="mb-2">
+            <div className="text-xs text-gray-400 mb-1">Admin</div>
+            <button
+              onClick={() => handleProtectedNavigate('/admin')}
+              className={getButtonClass(isActive('/admin'))}
+            >
+              <span>🛠️</span> Admin Panel
+            </button>
+          </div>
+        )}
 
         {/* General group */}
         <div className="mb-2 mt-auto pt-4 border-t border-gray-700">
