@@ -7,6 +7,7 @@ import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
 import DeletePlaylistModal from '../components/DeletePlaylistModal';
 import data from '../data';
 import { toast } from 'react-toastify';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 const PlaylistDetail = () => {
   const { id } = useParams();
@@ -144,10 +145,7 @@ const PlaylistDetail = () => {
     setPlaylistAndPlay(playlistSongs, songIndex);
   };
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
+  // Remove local formatDate function - using dateUtils instead
 
   if (!playlist) {
     return (
@@ -207,7 +205,7 @@ const PlaylistDetail = () => {
                 {playlist.songs.length} {playlist.songs.length === 1 ? 'song' : 'songs'}
               </span>
               <span className="mx-2">•</span>
-              <span>Created on {formatDate(playlist.createdAt)}</span>
+              <span>Created on {formatDateForDisplay(playlist.createdAt)}</span>
             </div>
             
             <div className="flex gap-4 mt-6">

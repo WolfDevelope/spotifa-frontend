@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import HeartIcon from './HeartIcon';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 const AlbumTrackTable = ({ tracks, album, artist }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -19,7 +20,6 @@ const AlbumTrackTable = ({ tracks, album, artist }) => {
         <table className="min-w-full text-sm text-left text-white">
           <thead>
             <tr className="border-b border-gray-700 text-base">
-              <th className="px-3 py-3"></th>
               <th className="px-3 py-3">#</th>
               <th className="px-3 py-3">Title</th>
               <th className="px-3 py-3">Release Date</th>
@@ -30,17 +30,19 @@ const AlbumTrackTable = ({ tracks, album, artist }) => {
           <tbody>
             {tracks.map((track, idx) => (
               <tr key={track.id} className="border-b border-gray-700 hover:bg-[#23203a]">
+                <td className="px-3 py-2 font-bold">{idx + 1}</td>
                 <td className="px-3 py-2">
-                  <div className="w-12 h-12 bg-gray-700 rounded">
-                    <img src={track.cover} alt="" className="w-full h-full object-cover rounded" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gray-700 rounded">
+                      <img src={track.cover} alt="" className="w-full h-full object-cover rounded" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{track.title}</div>
+                      <div className="text-xs text-gray-300 font-normal">{artist ? artist.name : ""}</div>
+                    </div>
                   </div>
                 </td>
-                <td className="px-3 py-2 font-bold">{idx + 1}</td>
-                <td className="px-3 py-2 font-semibold">
-                  {track.title}
-                  <div className="text-xs text-gray-300 font-normal">{artist ? artist.name : ""}</div>
-                </td>
-                <td className="px-3 py-2">{track.releaseDate || ""}</td>
+                <td className="px-3 py-2">{formatDateForDisplay(track.releaseDate)}</td>
                 <td className="px-3 py-2">{album.name}</td>
                 <td className="px-3 py-2 text-right">
                   <div className="flex items-center justify-end gap-4 h-full">
