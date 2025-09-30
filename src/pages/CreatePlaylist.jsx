@@ -4,6 +4,7 @@ import { usePlaylist } from '../context/PlaylistContext';
 import { useAuth } from '../context/AuthContext';
 import PLAYLIST_API from '../services/playlist';
 import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
+import musicService from '../services/musicService';
 import data from '../data';
 import { toast } from 'react-toastify';
 import '../assets/styles/main.css';
@@ -24,9 +25,57 @@ const CreatePlaylist = () => {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [allSongs, setAllSongs] = useState([]);
+  const [allArtists, setAllArtists] = useState([]);
+  const [allAlbums, setAllAlbums] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Load all data from API
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setIsLoadingData(true);
+        
+        // Load songs, artists, and albums from API with fallback to local data
+        const [songsResponse, artistsResponse, albumsResponse] = await Promise.all([
+          musicService.getAllSongs({ limit: 100 }).catch(() => ({ success: false })),
+          musicService.getAllArtists({ limit: 100 }).catch(() => ({ success: false })),
+          musicService.getAllAlbums({ limit: 100 }).catch(() => ({ success: false }))
+        ]);
+
+        // Use API data if available, otherwise fallback to local data
+        const songs = songsResponse.success && songsResponse.data.length > 0 
+          ? songsResponse.data 
+          : data.songs;
+        
+        const artists = artistsResponse.success && artistsResponse.data.length > 0 
+          ? artistsResponse.data 
+          : data.artists;
+          
+        const albums = albumsResponse.success && albumsResponse.data.length > 0 
+          ? albumsResponse.data 
+          : data.albums;
+
+        setAllSongs(songs);
+        setAllArtists(artists);
+        setAllAlbums(albums);
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+        // Fallback to local data
+        setAllSongs(data.songs);
+        setAllArtists(data.artists);
+        setAllAlbums(data.albums);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadAllData();
+  }, []);
 
   // Load playlist data for edit mode
   useEffect(() => {
@@ -43,7 +92,7 @@ const CreatePlaylist = () => {
         const fetchPlaylist = async () => {
           try {
             const response = await PLAYLIST_API.getPlaylistById(editPlaylistId);
-            const enrichedPlaylist = enrichPlaylistWithSongs(response);
+            const enrichedPlaylist = await enrichPlaylistWithSongs(response);
             setPlaylistData({
               name: enrichedPlaylist.name,
               description: enrichedPlaylist.description || '',
@@ -65,7 +114,8 @@ const CreatePlaylist = () => {
   };
 
   const addSongToPlaylist = (song) => {
-    if (!playlistData.songs.some(s => s.id === song.id)) {
+    const songId = song._id || song.id; // Support both API (_id) and local (id) formats
+    if (!playlistData.songs.some(s => (s._id || s.id) === songId)) {
       setPlaylistData(prev => ({
         ...prev,
         songs: [...prev.songs, song]
@@ -78,7 +128,7 @@ const CreatePlaylist = () => {
   const removeSongFromPlaylist = (songId) => {
     setPlaylistData(prev => ({
       ...prev,
-      songs: prev.songs.filter(song => song.id !== songId)
+      songs: prev.songs.filter(song => (song._id || song.id) !== songId)
     }));
   };
 
@@ -88,10 +138,29 @@ const CreatePlaylist = () => {
       return;
     }
     
-    const results = data.songs.filter(song => 
-      song.title.toLowerCase().includes(query.toLowerCase()) ||
-      (song.artist && song.artist.toLowerCase().includes(query.toLowerCase()))
-    );
+    const results = allSongs.filter(song => {
+      const songTitle = song.title?.toLowerCase() || '';
+      const queryLower = query.toLowerCase();
+      
+      // For API songs, find artist by ID
+      let artistName = '';
+      if (song.artist) {
+        if (typeof song.artist === 'string') {
+          // If artist is populated as object
+          const artist = allArtists.find(a => (a._id || a.id) === song.artist);
+          artistName = artist?.name?.toLowerCase() || '';
+        } else if (song.artist.name) {
+          // If artist is populated as object
+          artistName = song.artist.name.toLowerCase();
+        }
+      } else if (song.artistId) {
+        // For local data format
+        const artist = allArtists.find(a => (a._id || a.id) === song.artistId);
+        artistName = artist?.name?.toLowerCase() || '';
+      }
+      
+      return songTitle.includes(queryLower) || artistName.includes(queryLower);
+    });
     
     setSearchResults(results);
   };
@@ -110,7 +179,8 @@ const CreatePlaylist = () => {
     }
   };
 
-  const handleRemoveSong = (songId) => {
+  const handleRemoveSong = (song) => {
+    const songId = song._id || song.id; // Support both formats
     removeSongFromPlaylist(songId);
   };
 
@@ -136,7 +206,7 @@ const CreatePlaylist = () => {
       const playlistPayload = {
         name: playlistData.name,
         description: playlistData.description,
-        songs: playlistData.songs.map(song => song.id)
+        songs: playlistData.songs.map(song => song._id || song.id) // Support both formats
       };
       
       if (isEditMode) {
@@ -144,7 +214,7 @@ const CreatePlaylist = () => {
         const response = await PLAYLIST_API.updatePlaylist(editPlaylistId, playlistPayload);
         if (response.success) {
           // Update the playlist in context with enriched data
-          updatePlaylist(editPlaylistId, response.playlist);
+          await updatePlaylist(editPlaylistId, response.playlist);
           toast.success('Playlist updated successfully!');
           // Navigate back with state to force refresh
           navigate(`/playlist/${editPlaylistId}`, { 
@@ -156,7 +226,7 @@ const CreatePlaylist = () => {
         // Create new playlist
         const response = await PLAYLIST_API.createPlaylist(playlistPayload);
         if (response.success) {
-          addPlaylist(response.playlist);
+          await addPlaylist(response.playlist);
           toast.success('Playlist created successfully!');
           navigate('/your-playlists');
         }
@@ -188,6 +258,19 @@ const CreatePlaylist = () => {
     
     return '0:00';
   };
+
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#1e1e2a] to-[#0f0f1a] text-white p-6 ml-64">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+            <span className="ml-4 text-gray-400">Loading songs...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1e1e2a] to-[#0f0f1a] text-white p-6 ml-64">
@@ -295,12 +378,38 @@ const CreatePlaylist = () => {
                 {/* Song Rows */}
                 <div className="divide-y divide-gray-800">
                   {playlistData.songs.map((song, index) => {
-                    const artist = data.artists.find(a => a.id === song.artistId);
-                    const album = data.albums.find(a => a.id === song.albumId);
+                    // Find artist and album from loaded data
+                    let artist, album;
+                    
+                    if (song.artist) {
+                      if (typeof song.artist === 'string') {
+                        // Artist is ID, find in allArtists
+                        artist = allArtists.find(a => (a._id || a.id) === song.artist);
+                      } else {
+                        // Artist is populated object
+                        artist = song.artist;
+                      }
+                    } else if (song.artistId) {
+                      // Local data format
+                      artist = allArtists.find(a => (a._id || a.id) === song.artistId);
+                    }
+                    
+                    if (song.album) {
+                      if (typeof song.album === 'string') {
+                        // Album is ID, find in allAlbums
+                        album = allAlbums.find(a => (a._id || a.id) === song.album);
+                      } else {
+                        // Album is populated object
+                        album = song.album;
+                      }
+                    } else if (song.albumId) {
+                      // Local data format
+                      album = allAlbums.find(a => (a._id || a.id) === song.albumId);
+                    }
                     
                     return (
                       <div 
-                        key={song.id} 
+                        key={song._id || song.id} 
                         className="grid grid-cols-12 gap-4 items-center px-6 py-3 hover:bg-[#2d2240] group"
                       >
                         <div className="col-span-1 text-center text-gray-400 group-hover:text-white">
@@ -327,7 +436,7 @@ const CreatePlaylist = () => {
                             {formatDuration(song.duration || 180)}
                           </span>
                           <button
-                            onClick={() => handleRemoveSong(song.id)}
+                            onClick={() => handleRemoveSong(song)}
                             className="text-gray-400 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Remove from playlist"
                           >
@@ -380,11 +489,23 @@ const CreatePlaylist = () => {
               <h3 className="text-lg font-semibold mb-4">Add to playlist</h3>
               <div className="space-y-2">
                 {searchResults.map((song) => {
-                  const artist = data.artists.find(a => a.id === song.artistId);
-                  const isAlreadyAdded = playlistData.songs.some(s => s.id === song.id);
+                  // Find artist from loaded data
+                  let artist;
+                  if (song.artist) {
+                    if (typeof song.artist === 'string') {
+                      artist = allArtists.find(a => (a._id || a.id) === song.artist);
+                    } else {
+                      artist = song.artist;
+                    }
+                  } else if (song.artistId) {
+                    artist = allArtists.find(a => (a._id || a.id) === song.artistId);
+                  }
+                  
+                  const songId = song._id || song.id;
+                  const isAlreadyAdded = playlistData.songs.some(s => (s._id || s.id) === songId);
                   
                   return (
-                    <div key={song.id} className="flex items-center justify-between p-3 hover:bg-[#2d2240] rounded-lg">
+                    <div key={songId} className="flex items-center justify-between p-3 hover:bg-[#2d2240] rounded-lg">
                       <div className="flex items-center gap-4 flex-1">
                         <img 
                           src={song.cover} 
@@ -403,7 +524,7 @@ const CreatePlaylist = () => {
                       </div>
                       {isAlreadyAdded ? (
                         <button
-                          onClick={() => handleRemoveSong(song.id)}
+                          onClick={() => handleRemoveSong(song)}
                           className="ml-4 px-4 py-1.5 bg-green-600/20 border border-green-500 hover:border-red-500 hover:bg-red-600/20 hover:text-red-400 text-green-400 text-sm rounded-full flex items-center gap-2 transition-colors"
                           title="Remove from playlist"
                         >

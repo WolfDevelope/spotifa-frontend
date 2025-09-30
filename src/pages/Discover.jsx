@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-import NewReleaseSongs from '../components/NewReleaseSongs';
-import PopularArtists from '../components/PopularArtists';
-import MusicVideo from '../components/MusicVideo';
-import MoodPlaylists from '../components/MoodPlaylists';
+import NewReleaseSongs from '../components/NewReleaseSongs_API';
+import PopularArtists from '../components/PopularArtists_API';
+import MusicVideo from '../components/MusicVideo_API';
+import MoodPlaylists from '../components/MoodPlaylists_API';
 import Footer from '../components/Footer';
-import MusicGenres from '../components/MusicGenres';
-import NewAlbums from '../components/NewAlbums';
+import MusicGenres from '../components/MusicGenres_API';
+import NewAlbums from '../components/NewAlbums_API';
 import { useNavigate } from 'react-router-dom';
 const Discover = () => {
   const [currentUser, setCurrentUser] = useState(null);

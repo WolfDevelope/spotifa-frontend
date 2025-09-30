@@ -40,8 +40,8 @@ export const PlaylistProvider = ({ children }) => {
       if (currentUser) {
         const response = await PLAYLIST_API.getMyPlaylists();
         const userPlaylists = response.playlists || [];
-        // Enrich playlists with full song details from local data
-        const enrichedPlaylists = enrichPlaylistsWithSongs(userPlaylists);
+        // Enrich playlists with full song details from API/local data
+        const enrichedPlaylists = await enrichPlaylistsWithSongs(userPlaylists);
         setPlaylists(enrichedPlaylists);
       }
       setIsInitialized(true);
@@ -52,8 +52,9 @@ export const PlaylistProvider = ({ children }) => {
     }
   };
 
-  const addPlaylist = (playlist) => {
-    const enrichedPlaylist = enrichPlaylistsWithSongs([playlist])[0];
+  const addPlaylist = async (playlist) => {
+    const enrichedPlaylists = await enrichPlaylistsWithSongs([playlist]);
+    const enrichedPlaylist = enrichedPlaylists[0];
     setPlaylists(prev => [...prev, enrichedPlaylist]);
   };
 
@@ -61,8 +62,9 @@ export const PlaylistProvider = ({ children }) => {
     setPlaylists(prev => prev.filter(p => p._id !== playlistId));
   };
 
-  const updatePlaylist = (playlistId, updatedData) => {
-    const enrichedData = enrichPlaylistsWithSongs([updatedData])[0];
+  const updatePlaylist = async (playlistId, updatedData) => {
+    const enrichedPlaylists = await enrichPlaylistsWithSongs([updatedData]);
+    const enrichedData = enrichedPlaylists[0];
     setPlaylists(prev => 
       prev.map(p => p._id === playlistId ? { ...p, ...enrichedData } : p)
     );

@@ -5,6 +5,7 @@ import { useMusic } from './context/MusicContext';
 import { PlaylistProvider } from './context/PlaylistContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import musicService from './services/musicService';
 
 // Components
 import Header from './components/Header';
@@ -41,10 +42,31 @@ const App = () => {
     artists: [],
   });
 
-  const handleSearch = (term) => {
+  const handleSearch = async (term) => {
     setSearchTerm(term);
-    // TODO: Implement search functionality
-    console.log('Searching for:', term);
+    
+    if (!term.trim()) {
+      setSearchResults({ songs: [], albums: [], artists: [] });
+      return;
+    }
+
+    try {
+      // Search songs, albums, and artists from MongoDB API
+      const [songsResponse, albumsResponse, artistsResponse] = await Promise.all([
+        musicService.getAllSongs({ search: term, limit: 10 }),
+        musicService.getAllAlbums({ search: term, limit: 8 }),
+        musicService.getAllArtists({ search: term, limit: 6 })
+      ]);
+
+      setSearchResults({
+        songs: songsResponse.success ? songsResponse.data : [],
+        albums: albumsResponse.success ? albumsResponse.data : [],
+        artists: artistsResponse.success ? artistsResponse.data : []
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults({ songs: [], albums: [], artists: [] });
+    }
   };
 
   const isAccountPage = location.pathname === '/account';
@@ -59,48 +81,51 @@ const App = () => {
           user={currentUser}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          setSearchResults={setSearchResults}
+          onSearch={handleSearch}
         />
         <div className="relative">
           <Sidebar />
           <main className="min-h-[calc(100vh-80px)] pt-20">
-          <ScrollToTop />
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Home />} className="mt-8"/>
-            <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
-            <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <SignUp/>} />
+            <ScrollToTop />
             
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              
-              <Route path="/discover" element={<Discover />} />
-              <Route path="/albums" element={<Albums />} />
-              <Route path="/artists" element={<Artists />} />
-              <Route path="/song/:id" element={<SongDetail />} />
-              <Route path="/album/:id" element={<AlbumDetail />} />
-              <Route path="/artist/:id" element={<ArtistsDetail />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/create-playlist" element={<CreatePlaylist />} />
-              <Route path="/your-playlists" element={<YourPlaylists />} />
-              <Route path="/playlist/:id" element={<PlaylistDetail />} />
-              <Route path="/account" element={<Account />} />
-            </Route>
-            
-            {/* 404 - Not Found */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-          {searchTerm.trim() !== '' && (
-            <div className="pt-22 pl-32 px-4 max-w-6xl mx-auto">
-              <SearchResults
-                songs={searchResults.songs}
-                albums={searchResults.albums}
-                artists={searchResults.artists}
-                onNavigate={() => setSearchTerm('')}
-              /> 
-            </div>
-          )}
-        </main>
+            {/* Show search results when searching, hide main content */}
+            {searchTerm.trim() !== '' ? (
+              <div className="pt-8 pl-80 pr-8 max-w-7xl mx-auto">
+                <SearchResults
+                  songs={searchResults.songs}
+                  albums={searchResults.albums}
+                  artists={searchResults.artists}
+                  onNavigate={() => setSearchTerm('')}
+                /> 
+              </div>
+            ) : (
+              /* Show main content when not searching */
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Home />} className="mt-8"/>
+                <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
+                <Route path="/signup" element={isAuthenticated ? <Navigate to="/" replace /> : <SignUp/>} />
+                
+                {/* Protected routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/discover" element={<Discover />} />
+                  <Route path="/albums" element={<Albums />} />
+                  <Route path="/artists" element={<Artists />} />
+                  <Route path="/song/:id" element={<SongDetail />} />
+                  <Route path="/album/:id" element={<AlbumDetail />} />
+                  <Route path="/artist/:id" element={<ArtistsDetail />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/create-playlist" element={<CreatePlaylist />} />
+                  <Route path="/your-playlists" element={<YourPlaylists />} />
+                  <Route path="/playlist/:id" element={<PlaylistDetail />} />
+                  <Route path="/account" element={<Account />} />
+                </Route>
+                
+                {/* 404 - Not Found */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            )}
+          </main>
         {shouldShowMusicPlayer && <MusicPlayer />}
         <ToastContainer position="bottom-right" autoClose={3000} />
       </div>

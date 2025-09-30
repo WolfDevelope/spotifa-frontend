@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
 import Footer from '../components/Footer';
-import TopAlbums from '../components/TopAlbums';
-import NewAlbums from '../components/NewAlbums';
-import PopularAlbums from '../components/PopularAlbums';
-import MixAlbums from '../components/MixAlbums';
+import TopAlbums from '../components/TopAlbums_API';
+import NewAlbums from '../components/NewAlbums_API';
+import PopularAlbums from '../components/PopularAlbums_API';
+import MixAlbums from '../components/MixAlbums_API';
 import { useNavigate } from 'react-router-dom';
 const Albums = () => {
   const [currentUser, setCurrentUser] = useState(null);

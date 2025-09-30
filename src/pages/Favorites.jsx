@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlay, FaTrash } from 'react-icons/fa';
 import data from '../data';
@@ -11,16 +11,37 @@ const Favorites = () => {
   const navigate = useNavigate();
   const { setPlaylistAndPlay } = useMusic();
   const { currentUser } = useAuth();
-  const { favoriteSongs, isLoading, removeFromFavorites } = useFavorites();
+  const { favoriteSongs, isLoading, removeFromFavorites, refreshFavorites } = useFavorites();
 
-  const handleRemoveFromFavorites = async (songId) => {
+  // Debug log (reduced spam)
+  // console.log('Favorites page - favoriteSongs count:', favoriteSongs.length);
+
+  // Let FavoritesContext handle loading automatically
+  // No need to force refresh here
+
+  const handleRemoveFromFavorites = async (song) => {
     try {
+      const songId = song._id || song.id; // Support both API and local data
+      
       if (currentUser) {
-        // Remove from database for logged-in users
-        await toggleFavorite(songId);
+        // Remove from context immediately for instant UI update
+        removeFromFavorites(songId);
+        
+        // Then remove from database (without triggering refresh)
+        try {
+          await toggleFavorite(songId);
+          
+          // Dispatch event to update heart icons in other components, but skip refresh
+          window.dispatchEvent(new CustomEvent('refreshFavorites', { 
+            detail: { skipRefresh: true } 
+          }));
+        } catch (apiError) {
+          console.error('Failed to remove from database:', apiError);
+        }
+      } else {
+        // For non-logged users, just remove from context
+        removeFromFavorites(songId);
       }
-      // Context will handle the removal automatically
-      removeFromFavorites(songId);
     } catch (error) {
       console.error('Error removing favorite:', error);
     }
@@ -28,7 +49,9 @@ const Favorites = () => {
 
   const handlePlaySong = (songToPlay) => {
     // Find the index of the clicked song in the favorites list
-    const startIndex = favoriteSongs.findIndex(song => song.id === songToPlay.id);
+    const startIndex = favoriteSongs.findIndex(song => 
+      (song._id || song.id) === (songToPlay._id || songToPlay.id)
+    );
     
     if (startIndex !== -1) {
       setPlaylistAndPlay(favoriteSongs, startIndex);
@@ -59,7 +82,7 @@ const Favorites = () => {
         <div className="grid gap-4">
           {favoriteSongs.map((song, index) => (
             <div 
-              key={song.id}
+              key={song._id || song.id}
               className="flex items-center p-3 bg-[#2a2139] rounded-lg hover:bg-[#342a42] transition-colors"
             >
               <span className="text-gray-400 w-8 text-center">{index + 1}</span>
@@ -73,7 +96,10 @@ const Favorites = () => {
                 <div className="flex-1">
                   <h3 className="font-medium text-white">{song.title}</h3>
                   <p className="text-sm text-gray-400">
-                    {data.artists.find(a => a.id === song.artistId)?.name || 'Unknown Artist'}
+                    {song.artist ? 
+                      (song.artist.name || song.artist) : 
+                      (data.artists.find(a => a.id === song.artistId)?.name || 'Unknown Artist')
+                    }
                   </p>
                 </div>
               </div>
@@ -88,7 +114,7 @@ const Favorites = () => {
                 </button>
                 
                 <button 
-                  onClick={() => handleRemoveFromFavorites(song.id)}
+                  onClick={() => handleRemoveFromFavorites(song)}
                   className="text-pink-500 hover:text-pink-400 p-2"
                   title="Remove from favorites"
                 >

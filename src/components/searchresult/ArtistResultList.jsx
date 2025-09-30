@@ -1,17 +1,12 @@
 import React from "react";
-import ArtistsCard from "../ArtistsCard";
-import { Link } from "react-router-dom";
+import ArtistsCard_API from "../ArtistsCard_API";
 
 const ArtistResultList = ({ artists, onNavigate }) => (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
     {artists.map((artist) => (
-      <Link to={`/artist/${artist.id}`}
-        onClick={onNavigate}
-        key={artist.id}
-        style={{ textDecoration: "none" }}
-      >
-        <ArtistsCard artist={artist} />
-      </Link>
+      <div key={artist._id || artist.id} onClick={onNavigate}>
+        <ArtistsCard_API artist={artist} />
+      </div>
     ))}
   </div>
 );

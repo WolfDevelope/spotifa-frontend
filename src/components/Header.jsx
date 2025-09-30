@@ -1,10 +1,9 @@
 import React from 'react';
 import '../assets/styles/main.css';
 import { Link, useNavigate } from 'react-router-dom';
-import data from "../data";
 import { useAuth } from '../context/AuthContext';
 
-const Header = ({ user, searchTerm, setSearchTerm, setSearchResults }) => {
+const Header = ({ user, searchTerm, setSearchTerm, onSearch }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -12,29 +11,11 @@ const Header = ({ user, searchTerm, setSearchTerm, setSearchResults }) => {
   const handleSearch = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-
-    if (value.trim() === "") {
-      setSearchResults({ songs: [], albums: [], artists: [] });
-      return;
+    
+    // Call the search function passed from App.jsx
+    if (onSearch) {
+      onSearch(value);
     }
-
-    const lower = value.toLowerCase();
-
-    const songs = data.songs.filter(
-      (song) =>
-        song.title.toLowerCase().includes(lower) ||
-        (song.lyrics && song.lyrics.toLowerCase().includes(lower))
-    );
-
-    const albums = data.albums.filter((album) =>
-      album.name.toLowerCase().includes(lower)
-    );
-
-    const artists = data.artists.filter((artist) =>
-      artist.name.toLowerCase().includes(lower)
-    );
-
-    setSearchResults({ songs, albums, artists });
   };
 
   const handleLogout = () => {

@@ -171,16 +171,34 @@ const MusicPlayer = () => {
     }
   }, [isPlaying, currentTrack]);  
 
-  const artistObj = currentTrack.artistId
-    ? findArtistById(currentTrack.artistId)
-    : null;
+  // Handle both MongoDB API format and local data format
+  const getArtistName = () => {
+    // If artist is already an object (populated from API)
+    if (currentTrack.artist && typeof currentTrack.artist === 'object') {
+      return currentTrack.artist.name;
+    }
+    
+    // If artist is an ID string (from API)
+    if (currentTrack.artist && typeof currentTrack.artist === 'string') {
+      // Try to find in local data as fallback
+      const artistObj = findArtistById(currentTrack.artist);
+      return artistObj ? artistObj.name : 'Unknown Artist';
+    }
+    
+    // Legacy format: artistId (local data)
+    if (currentTrack.artistId) {
+      const artistObj = findArtistById(currentTrack.artistId);
+      return artistObj ? artistObj.name : 'Unknown Artist';
+    }
+    
+    return 'Unknown Artist';
+  };
 
-  
-    const handleClose = (e) => {
-      e.stopPropagation();
-      setIsPlaying(false);  // Stop the music
-      setIsPlayerVisible(false);  // Hide the player
-    };
+  const handleClose = (e) => {
+    e.stopPropagation();
+    setIsPlaying(false);  // Stop the music
+    setIsPlayerVisible(false);  // Hide the player
+  };
 
   if (!isPlayerVisible) return null;
 
@@ -209,7 +227,7 @@ const MusicPlayer = () => {
         <div className="track-details">
           <h4 className="track-title">{currentTrack.title}</h4>
           <p className="track-artist">
-            {artistObj ? artistObj.name : "Unknown Artist"}
+            {getArtistName()}
           </p>
         </div>
       </div>

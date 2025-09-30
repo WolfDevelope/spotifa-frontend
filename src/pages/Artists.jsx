@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
 import Footer from '../components/Footer';
-import PopularArtists from '../components/PopularArtists';
-import EmergingPopArtists from '../components/EmergingPopArtists';
-import RisingAlternativeIndieArtists from '../components/RisingAlternativeIndieArtists';
-import RecentlyViralArtists from '../components/RecentlyViralArtists';
+import PopularArtists from '../components/PopularArtists_API';
+import EmergingPopArtists from '../components/EmergingPopArtists_API';
+import RisingAlternativeIndieArtists from '../components/RisingAlternativeIndieArtists_API';
+import RecentlyViralArtists from '../components/RecentlyViralArtists_API';
 import { useNavigate } from 'react-router-dom';
 const Artists = () => {
   const [currentUser, setCurrentUser] = useState(null);

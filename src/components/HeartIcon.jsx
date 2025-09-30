@@ -30,14 +30,24 @@ const HeartIcon = ({ songId, size = 20 }) => {
     setIsLoading(true);
     try {
       const response = await toggleFavorite(songId);
+      console.log('Toggle favorite response:', response);
       
-      // Update context immediately based on API response
-      if (response.isFavorite) {
-        addToFavorites(songId);
-        toast.success('Added to favorites');
-      } else {
-        removeFromFavorites(songId);
-        toast.success('Removed from favorites');
+      // Update context immediately for UI responsiveness, then sync with API
+      if (response.success) {
+        if (response.isFavorite) {
+          console.log('Added to favorites:', songId);
+          addToFavorites(songId);
+          toast.success('Added to favorites');
+        } else {
+          console.log('Removed from favorites:', songId);
+          removeFromFavorites(songId);
+          toast.success('Removed from favorites');
+        }
+        
+        // Also refresh from API to ensure consistency
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('refreshFavorites'));
+        }, 100);
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);

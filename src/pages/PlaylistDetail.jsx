@@ -38,7 +38,7 @@ const PlaylistDetail = () => {
         // If force refresh is requested, skip cache and fetch from API
         if (shouldForceRefresh) {
           const response = await PLAYLIST_API.getPlaylistById(id);
-          const enrichedPlaylist = enrichPlaylistWithSongs(response);
+          const enrichedPlaylist = await enrichPlaylistWithSongs(response);
           if (isMounted) setPlaylist(enrichedPlaylist);
           // Clear the force refresh state
           navigate(location.pathname, { replace: true, state: {} });
@@ -61,7 +61,7 @@ const PlaylistDetail = () => {
 
         // Fetch from API if not in cache or cache doesn't have full data
         const response = await PLAYLIST_API.getPlaylistById(id);
-        const enrichedPlaylist = enrichPlaylistWithSongs(response);
+        const enrichedPlaylist = await enrichPlaylistWithSongs(response);
         if (isMounted) setPlaylist(enrichedPlaylist);
       } catch (error) {
         if (!isMounted || isDeleting.current) return;
@@ -274,14 +274,35 @@ const PlaylistDetail = () => {
           ) : (
             <div className="divide-y divide-gray-800">
               {playlist.songs.map((song, index) => {
-                const artist = data.artists.find(a => a.id === song.artistId);
+                // Use artistName from enriched song data, or fallback to finding artist
+                let artistName = 'Unknown Artist';
+                
+                if (song.artistName) {
+                  // Use pre-enriched artist name from playlistUtils
+                  artistName = song.artistName;
+                } else if (song.artist) {
+                  // Handle different artist formats
+                  if (typeof song.artist === 'string') {
+                    // Artist is ID, try to find in data
+                    const artist = data.artists.find(a => (a._id || a.id) === song.artist);
+                    artistName = artist?.name || 'Unknown Artist';
+                  } else if (song.artist.name) {
+                    // Artist is populated object
+                    artistName = song.artist.name;
+                  }
+                } else if (song.artistId) {
+                  // Local data format
+                  const artist = data.artists.find(a => (a._id || a.id) === song.artistId);
+                  artistName = artist?.name || 'Unknown Artist';
+                }
+                
                 const isCurrentSong = currentPlaylist.length > 0 && 
                   currentPlaylist[0]?.playlistId === playlist._id && 
                   currentTrackIndex === index && musicIsPlaying;
                 
                 return (
                   <div 
-                    key={song.id} 
+                    key={song._id || song.id} 
                     className={`grid grid-cols-12 gap-4 items-center p-3 hover:bg-[#2d2240] rounded-lg group cursor-pointer ${
                       isCurrentSong ? 'bg-[#2d2240]' : ''
                     }`}
@@ -314,7 +335,7 @@ const PlaylistDetail = () => {
                       </div>
                     </div>
                     <div className="col-span-4 text-gray-400 group-hover:text-white">
-                      {artist ? artist.name : 'Unknown Artist'}
+                      {artistName}
                     </div>
                     <div className="col-span-2 text-right text-gray-400 text-sm">
                       {song.duration || '3:45'}
