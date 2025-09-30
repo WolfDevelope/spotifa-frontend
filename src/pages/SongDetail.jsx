@@ -8,6 +8,7 @@ import musicService from '../services/musicService';
 import data from '../data';
 import lyricsData from '../lyrics';
 import HeartIcon from '../components/HeartIcon';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 const SongDetail = () => {
   const { id } = useParams();
@@ -185,7 +186,9 @@ const SongDetail = () => {
           </div>
           <div className="flex items-center gap-4 mt-2">
             <span className="text-gray-400">{song.duration}</span>
-            <span className="text-gray-400">{song.releaseDate && <>• {song.releaseDate}</>}</span>
+            {song.releaseDate && (
+              <span className="text-gray-400">• {formatDateForDisplay(song.releaseDate)}</span>
+            )}
           </div>
           <div className="flex gap-4 mt-4">
             <div onClick={handleFavoriteClick} className="text-pink-400 hover:text-pink-300 transition" title="Yêu thích">

@@ -15,8 +15,13 @@ const AlbumCard = ({ album }) => {
 
   const handleClickAlbum = (e) => {
     e.preventDefault();
+    console.log('AlbumCard_API: Navigating to album:', album._id, 'Full album:', album);
     if (currentUser) {
-      navigate(`/album/${album._id}`);
+      if (album._id) {
+        navigate(`/album/${album._id}`);
+      } else {
+        console.error('Album ID is missing:', album);
+      }
     } else {
       setShowLoginModal(true);
     }

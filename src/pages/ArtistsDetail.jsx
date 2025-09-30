@@ -61,6 +61,7 @@ const ArtistsDetail = () => {
               });
               if (albumsResponse.success) {
                 artistAlbums = albumsResponse.data;
+                console.log('ArtistsDetail: Loaded albums:', artistAlbums);
               }
             } catch (err) {
               console.error('Error loading artist albums:', err);

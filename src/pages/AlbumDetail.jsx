@@ -101,8 +101,12 @@ const AlbumDetail = () => {
       }
     };
 
-    if (id) {
+    if (id && id !== 'undefined') {
       loadAlbumDetail();
+    } else {
+      console.error('Invalid album ID:', id);
+      setError('Invalid album ID');
+      setLoading(false);
     }
   }, [id]);
 
