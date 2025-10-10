@@ -68,7 +68,7 @@ const UserManagement = () => {
   };
 
   if (loading) {
-    return <div className="text-white">Loading users...</div>;
+    return <div className="text-white flex flex-col items-center justify-center py-8 space-y-4">Loading users...</div>;
   }
 
   return (
@@ -160,19 +160,60 @@ const UserManagement = () => {
       {/* Pagination */}
       <div className="flex justify-center space-x-2">
         <button
-          onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-          disabled={pagination.page === 1}
-          className="px-3 py-1 bg-[#3a2d52] text-white rounded disabled:opacity-50"
+          onClick={() => {
+            if (pagination.page > 1 && !loading) {
+              setPagination(prev => ({ ...prev, page: prev.page - 1 }));
+            }
+          }}
+          disabled={pagination.page === 1 || loading}
+          className="px-3 py-1 bg-[#3a2d52] text-white rounded disabled:opacity-50 transition-opacity"
         >
           Previous
         </button>
-        <span className="text-white px-3 py-1">
-          Page {pagination.page} of {pagination.pages}
-        </span>
+        
+        {/* Page numbers */}
+        <div className="flex space-x-1">
+          {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+            let pageNum;
+            if (pagination.pages <= 5) {
+              pageNum = i + 1;
+            } else if (pagination.page <= 3) {
+              pageNum = i + 1;
+            } else if (pagination.page >= pagination.pages - 2) {
+              pageNum = pagination.pages - 4 + i;
+            } else {
+              pageNum = pagination.page - 2 + i;
+            }
+            
+            return (
+              <button
+                key={pageNum}
+                onClick={() => {
+                  if (pageNum !== pagination.page && !loading) {
+                    setPagination(prev => ({ ...prev, page: pageNum }));
+                  }
+                }}
+                disabled={loading}
+                className={`px-3 py-1 rounded transition-all ${
+                  pageNum === pagination.page
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    : 'bg-[#3a2d52] text-white hover:bg-[#4a3d62]'
+                } disabled:opacity-50`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+        
         <button
-          onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-          disabled={pagination.page === pagination.pages}
-          className="px-3 py-1 bg-[#3a2d52] text-white rounded disabled:opacity-50"
+          onClick={() => {
+            if (pagination.page < pagination.pages && !loading) {
+              setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+            }
+          }}
+          disabled={pagination.page === pagination.pages || loading}
+          className="px-3 py-1 bg-[#3a2d52] text-white rounded disabled:opacity-50 transition-opacity"
         >
           Next
         </button>

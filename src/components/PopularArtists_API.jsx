@@ -14,9 +14,11 @@ const PopularArtists = () => {
     const fetchPopularArtists = async () => {
       try {
         setLoading(true);
-        const response = await musicService.getPopularArtists();
+        const response = await musicService.getAllArtists();
         if (response.success) {
-          setArtists(response.data);
+          // Lấy 10 artists đầu tiên và shuffle để tạo "popular" effect
+          const popularArtists = response.data.slice(0, 10).sort(() => Math.random() - 0.5);
+          setArtists(popularArtists);
         } else {
           setError('Failed to load popular artists');
         }
@@ -71,20 +73,32 @@ const PopularArtists = () => {
     );
   }
 
+  // Lấy danh sách artist để hiển thị
+  const artistsToShow = showAll ? artists : artists.slice(0, 5);
+
   if (!artists || artists.length === 0) {
-    return null;
+    return (
+      <section className="mb-8" id="popularArtistsList">
+        <h2 className="text-2xl font-bold mb-3">
+          Popular <span className="text-pink-400">Artists</span>
+        </h2>
+        <div className="text-center py-8">
+          <p className="text-gray-400 mb-4">No popular artists available</p>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="mb-8">
+    <section className="mb-8" id="popularArtistsList">
       <h2 className="text-2xl font-bold mb-3">
         Popular <span className="text-pink-400">Artists</span>
       </h2>
       <div className="flex flex-wrap gap-2">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 flex-grow">
-        {artists.map((artist, index) => (
-          <ArtistCard artist={artist} key={artist._id} index={index} />
-        ))}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 flex-grow">
+          {artistsToShow.map((artist, index) => (
+            <ArtistCard artist={artist} key={artist._id} index={index} />
+          ))}
       </div>
       <div className="flex flex-col items-center justify-center flex-shrink-0">
       <button

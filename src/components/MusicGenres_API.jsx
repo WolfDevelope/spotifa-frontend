@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import musicService from '../services/musicService';
 import data from '../data'; // Import fallback data
-import LoginModal from './LoginModal';
 
 const MusicGenres = () => {
   const navigate = useNavigate();
@@ -11,15 +10,13 @@ const MusicGenres = () => {
   const [musicGenres, setMusicGenres] = useState(data.musicGenres); // Set initial state with fallback data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const handleGenreClick = (genre) => {
-    if (currentUser) {
-      // Tạm thời navigate đến search với genre name
-      navigate(`/search?genre=${encodeURIComponent(genre.name)}`);
-    } else {
-      setShowLoginModal(true);
-    }
+    // Tạm thời vô hiệu hóa navigation - chưa có genre functionality thật sự
+    // TODO: Implement actual genre functionality
+    console.log('Genre clicked:', genre.name || genre.title);
+    // Không làm gì cả - no action when clicked
   };
 
   // Fetch music genres from API
@@ -85,6 +82,9 @@ const MusicGenres = () => {
     );
   }
 
+  // Lấy danh sách genres để hiển thị
+  const genresToShow = showAll ? musicGenres : musicGenres.slice(0, 5);
+
   return (
     <section id="musicGenresSection" className="mb-12 search-item">
       <h2 className="text-2xl font-bold mb-6">
@@ -92,7 +92,7 @@ const MusicGenres = () => {
       </h2>
       
       <div className="flex items-center gap-6 search-item">
-        {musicGenres.map((genre, idx) => (
+        {genresToShow.map((genre, idx) => (
           <div 
             key={genre._id || genre.id || genre.name} 
             className="relative shadow-lg group cursor-pointer search-item hover:scale-105 transition-transform"
@@ -105,26 +105,41 @@ const MusicGenres = () => {
           </div>
         ))}
         {/* View All */}
-        <div className="flex flex-col items-center justify-center ml-2 flex-shrink-0">
-          <button className="cursor-pointer w-14 h-14 bg-[#232323] rounded-full flex items-center justify-center shadow-lg mb-2 hover:bg-pink-500 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" fill="none"/>
-              <path stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-4-4h8"/>
-            </svg>
-          </button>
-          <span className="text-white font-semibold text-base">View All</span>
-        </div>
+        <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <button
+      className="cursor-pointer w-14 h-14 bg-[#232323] rounded-full flex items-center justify-center shadow-lg mb-2 hover:bg-pink-500 transition"
+      onClick={() => setShowAll((prev) => !prev)}
+      >
+      <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-8 h-8 text-white"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      >
+      <circle
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="white"
+      strokeWidth="2"
+      fill="none"
+      />
+      <path
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 8v8m-4-4h8"
+      />
+      </svg>
+      </button>
+      <span className="text-white font-semibold text-base">
+      {showAll ? "Collapse" : "View All"}
+      </span>
+      </div>
       </div>
       
-      {showLoginModal && (
-        <LoginModal
-          onClose={() => setShowLoginModal(false)}
-          onLogin={(user) => {
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            setShowLoginModal(false);
-          }}
-        />
-      )}
     </section>
   );
 };

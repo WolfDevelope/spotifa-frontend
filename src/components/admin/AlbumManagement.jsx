@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { CreateAlbumModal, LittleCreateArtistModal, ConfirmDeleteModal, SuccessModal } from './modals';
 
 const AlbumManagement = () => {
   const { adminAPI } = useAdmin();
@@ -16,6 +17,24 @@ const AlbumManagement = () => {
     genre: '',
     description: ''
   });
+  
+  // Data for dropdown
+  const [artists, setArtists] = useState([]);
+  const [loadingDropdown, setLoadingDropdown] = useState(false);
+  
+  // Modal state for creating artist
+  const [showArtistModal, setShowArtistModal] = useState(false);
+  const [artistFormData, setArtistFormData] = useState({ name: '', genre: '', country: '' });
+  
+  // Modal state for delete confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [albumToDelete, setAlbumToDelete] = useState(null);
+  
+  // Modal state for success notification
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successType, setSuccessType] = useState('success');
+  
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -26,6 +45,61 @@ const AlbumManagement = () => {
   useEffect(() => {
     fetchAlbums();
   }, [pagination.page]);
+
+  // Helper function to show success message
+  const showSuccess = (message, type = "success") => {
+    setSuccessMessage(message);
+    setSuccessType(type);
+    setShowSuccessModal(true);
+  };
+
+  // Load artists for dropdown
+  const loadArtists = async () => {
+    try {
+      setLoadingDropdown(true);
+      
+      // Load all artists (without pagination)
+      const artistsResponse = await adminAPI.getArtists(1, 100); // Get first 100 artists
+      if (artistsResponse.success) {
+        setArtists(artistsResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading artists:', error);
+    } finally {
+      setLoadingDropdown(false);
+    }
+  };
+
+  // Open artist creation modal
+  const openArtistModal = () => {
+    setArtistFormData({ name: '', genre: '', country: '' });
+    setShowArtistModal(true);
+  };
+
+  // Create new artist
+  const createNewArtist = async () => {
+    try {
+      const response = await adminAPI.createArtist({ 
+        name: artistFormData.name,
+        avatar: '/assets/images/artist-icon.png', // Default avatar
+        bio: `${artistFormData.name} is a talented artist.`, // Default bio
+        genre: artistFormData.genre || 'Unknown',
+        country: artistFormData.country || 'Unknown'
+      });
+      
+      if (response.success) {
+        // Add new artist to the list
+        setArtists(prev => [...prev, response.data]);
+        // Auto-select the new artist
+        setFormData(prev => ({ ...prev, artist: response.data._id }));
+        setShowArtistModal(false);
+        
+      }
+    } catch (error) {
+      console.error('Error creating artist:', error);
+      alert('Failed to create artist. Please try again.');
+    }
+  };
 
   const fetchAlbums = async () => {
     console.log('💿 Fetching albums for page:', pagination.page);
@@ -62,24 +136,68 @@ const AlbumManagement = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleCreateAlbum = async (e) => {
     e.preventDefault();
     try {
-      let response;
-      if (editingAlbum) {
-        response = await adminAPI.updateAlbum(editingAlbum._id, formData);
-      } else {
-        response = await adminAPI.createAlbum(formData);
-      }
-
+      // Prepare data with default cover if empty
+      const submitData = {
+        ...formData,
+        cover: formData.cover?.trim() || '/assets/images/album-icon.png'
+      };
+      
+      console.log('Creating album with data:', submitData);
+      
+      // Show success message immediately
+      showSuccess(`Album "${formData.name}" created successfully!`);
+      
+      // Close modal and reset form immediately
+      setShowModal(false);
+      resetForm();
+      
+      const response = await adminAPI.createAlbum(submitData);
+      
       if (response.success) {
-        setShowModal(false);
-        setEditingAlbum(null);
-        resetForm();
+        console.log('Album created successfully:', response.data);
         fetchAlbums();
+      } else {
+        console.error('Create album failed:', response);
+        setShowSuccessModal(false);
+        alert('Failed to create album. Please try again.');
       }
     } catch (error) {
-      console.error('Error saving album:', error);
+      console.error('Error creating album:', error);
+      setShowSuccessModal(false);
+      alert('Error creating album: ' + error.message);
+    }
+  };
+
+  const handleUpdateAlbum = async (e) => {
+    e.preventDefault();
+    try {
+      console.log('Updating album with data:', formData);
+      
+      // Show success message immediately
+      showSuccess(`Album "${formData.name}" updated successfully!`);
+      
+      // Close modal and reset form immediately
+      setShowModal(false);
+      setEditingAlbum(null);
+      resetForm();
+      
+      const response = await adminAPI.updateAlbum(editingAlbum._id, formData);
+      
+      if (response.success) {
+        console.log('Album updated successfully:', response.data);
+        fetchAlbums();
+      } else {
+        console.error('Update album failed:', response);
+        setShowSuccessModal(false);
+        alert('Failed to update album. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating album:', error);
+      setShowSuccessModal(false);
+      alert('Error updating album: ' + error.message);
     }
   };
 
@@ -88,24 +206,37 @@ const AlbumManagement = () => {
     setFormData({
       name: album.name || '',
       artist: album.artist?._id || '',
-      cover: album.cover || '',
+      cover: album.cover || '/assets/images/album-icon.png',
       year: album.year || '',
       genre: album.genre || '',
       description: album.description || ''
     });
+    loadArtists(); // Load artists for dropdown
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this album?')) {
-      try {
-        const response = await adminAPI.deleteAlbum(id);
-        if (response.success) {
-          fetchAlbums();
-        }
-      } catch (error) {
-        console.error('Error deleting album:', error);
+  const handleDelete = (album) => {
+    setAlbumToDelete(album);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      // Show delete success message immediately
+      showSuccess(`Album "${albumToDelete.name}" deleted successfully!`, "delete");
+      
+      const response = await adminAPI.deleteAlbum(albumToDelete._id);
+      if (response.success) {
+        fetchAlbums();
+        console.log(`Album "${albumToDelete.name}" deleted successfully`);
+      } else {
+        setShowSuccessModal(false);
+        alert('Failed to delete album. Please try again.');
       }
+    } catch (error) {
+      console.error('Error deleting album:', error);
+      setShowSuccessModal(false);
+      alert('Error deleting album: ' + error.message);
     }
   };
 
@@ -123,44 +254,48 @@ const AlbumManagement = () => {
   const openCreateModal = () => {
     resetForm();
     setEditingAlbum(null);
+    loadArtists(); // Load artists for dropdown
     setShowModal(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-white">Loading albums...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">Album Management</h2>
+  // Render content based on state
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-white">Loading albums...</div>
         </div>
-        <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-red-400">⚠️</span>
-            <span className="text-red-400 font-medium">Error</span>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-white">Album Management</h2>
           </div>
-          <p className="text-red-300 mt-2">{error}</p>
-          <button
-            onClick={() => {
-              setError(null);
-              fetchAlbums();
-            }}
-            className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors"
-          >
-            Try Again
-          </button>
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-400">⚠️</span>
+              <span className="text-red-400 font-medium">Error</span>
+            </div>
+            <p className="text-red-300 mt-2">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                fetchAlbums();
+              }}
+              className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
+    // Main content when loaded successfully
+    return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -179,7 +314,7 @@ const AlbumManagement = () => {
           <div key={album._id} className="bg-[#3a2d52] rounded-lg p-4">
             <div className="flex flex-col">
               <img
-                src={album.cover || '/default-album.jpg'}
+                src={album.cover || '/assets/images/album-icon.png'}
                 alt={album.name}
                 className="w-full h-48 rounded-lg object-cover mb-3"
               />
@@ -205,7 +340,7 @@ const AlbumManagement = () => {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(album._id)}
+                  onClick={() => handleDelete(album)}
                   className="flex-1 bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
                 >
                   Delete
@@ -215,6 +350,12 @@ const AlbumManagement = () => {
           </div>
         ))}
       </div>
+
+      {albums.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-400">No albums found. Add your first album!</p>
+        </div>
+      )}
 
       {/* Pagination */}
       <div className="flex justify-center space-x-2">
@@ -278,93 +419,76 @@ const AlbumManagement = () => {
         </button>
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#2d2240] rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-4">
-              {editingAlbum ? 'Edit Album' : 'Add New Album'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-white mb-1">Album Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Artist ID</label>
-                <input
-                  type="text"
-                  value={formData.artist}
-                  onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  placeholder="Artist ObjectId from database"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Cover Image URL</label>
-                <input
-                  type="url"
-                  value={formData.cover}
-                  onChange={(e) => setFormData({ ...formData, cover: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Release Year</label>
-                <input
-                  type="number"
-                  min="1900"
-                  max={new Date().getFullYear()}
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Genre</label>
-                <input
-                  type="text"
-                  value={formData.genre}
-                  onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  placeholder="e.g., Pop, Rock, Hip-Hop"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500 h-24"
-                  placeholder="Album description..."
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded hover:opacity-90"
-                >
-                  {editingAlbum ? 'Update' : 'Create'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      <CreateAlbumModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        editingAlbum={editingAlbum}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={editingAlbum ? handleUpdateAlbum : handleCreateAlbum}
+        artists={artists}
+        loadingDropdown={loadingDropdown}
+        openArtistModal={openArtistModal}
+      />
+
+      <LittleCreateArtistModal
+        showModal={showArtistModal}
+        setShowModal={setShowArtistModal}
+        formData={artistFormData}
+        setFormData={setArtistFormData}
+        onCreateArtist={createNewArtist}
+      />
+
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {renderContent()}
+
+      {/* Modals always render outside of loading/error states */}
+      <CreateAlbumModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        editingAlbum={editingAlbum}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={editingAlbum ? handleUpdateAlbum : handleCreateAlbum}
+        artists={artists}
+        loadingDropdown={loadingDropdown}
+        openArtistModal={openArtistModal}
+      />
+
+      <LittleCreateArtistModal
+        showModal={showArtistModal}
+        setShowModal={setShowArtistModal}
+        formData={artistFormData}
+        setFormData={setArtistFormData}
+        onCreateArtist={createNewArtist}
+      />
+
+      <ConfirmDeleteModal
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        onConfirm={confirmDelete}
+        title="Delete Album"
+        message="Are you sure you want to delete this album? This action cannot be undone."
+        itemName={albumToDelete?.name}
+        confirmText="Delete Album"
+        cancelText="Cancel"
+      />
+
+      <SuccessModal
+        showModal={showSuccessModal}
+        setShowModal={setShowSuccessModal}
+        title={successType === "delete" ? "Deleted!" : "Success!"}
+        message={successMessage}
+        type={successType}
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
+    </>
   );
 };
 

@@ -16,6 +16,27 @@ const VideoPlayer = ({ video, onClose }) => {
     }
   }, [isPlaying]);
 
+  // Handle both API and local data formats
+  const getArtistName = () => {
+    // API format: video.artist is an object or string
+    if (video.artist) {
+      if (typeof video.artist === 'object' && video.artist.name) {
+        return video.artist.name;
+      }
+      if (typeof video.artist === 'string') {
+        return video.artist;
+      }
+    }
+    
+    // Local data format: video.artistId
+    if (video.artistId) {
+      const artist = data.artists.find(artist => artist.id === video.artistId);
+      return artist ? artist.name : 'Unknown Artist';
+    }
+    
+    return 'Unknown Artist';
+  };
+
   if (!video) return null;
 
   return (
@@ -41,7 +62,7 @@ const VideoPlayer = ({ video, onClose }) => {
         
         <div className="mt-4 text-white">
           <h2 className="text-2xl font-bold">{video.title}</h2>
-          <p className="text-gray-300">{data.artists.find(artist => artist.id === video.artistId).name}</p>
+          <p className="text-gray-300">{getArtistName()}</p>
         </div>
       </div>
     </div>

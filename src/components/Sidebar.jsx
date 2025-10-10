@@ -65,18 +65,7 @@ const Sidebar = () => {
           </button>
         </div>
 
-        {/* Library group */}
-        <div className="mb-2">
-          <div className="text-xs text-gray-400 mb-1">Library</div>
-
-          <button className={getButtonClass(false)}>
-            <span>🕒</span> Recently Added
-          </button>
-
-          <button className={getButtonClass(false)}>
-            <span>▶️</span> Most played
-          </button>
-        </div>
+        
 
         {/* Playlist and favorite group */}
         <div className="mb-2">
@@ -121,9 +110,7 @@ const Sidebar = () => {
         <div className="mb-2 mt-auto pt-4 border-t border-gray-700">
           <div className="text-xs text-gray-400 mb-1">General</div>
 
-          <button className={getButtonClass(false)}>
-            <span>⚙️</span> Setting
-          </button>
+          
 
           {currentUser ? (
             <button

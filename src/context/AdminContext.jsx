@@ -52,13 +52,27 @@ export const AdminProvider = ({ children }) => {
 
     createSong: async (songData) => {
       try {
+        console.log('AdminContext: Creating song with data:', songData);
+        console.log('AdminContext: Headers:', getAuthHeaders());
+        
         const response = await fetch('http://localhost:5000/api/admin/songs', {
           method: 'POST',
           headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify(songData)
         });
-        return await response.json();
+        
+        console.log('AdminContext: Song response status:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('AdminContext: Song error response:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('AdminContext: Song success response:', result);
+        return result;
       } catch (error) {
         console.error('Error creating song:', error);
         throw error;
@@ -110,13 +124,28 @@ export const AdminProvider = ({ children }) => {
 
     createArtist: async (artistData) => {
       try {
+        console.log('AdminContext: Creating artist with data:', artistData);
+        console.log('AdminContext: Headers:', getAuthHeaders());
+        
         const response = await fetch('http://localhost:5000/api/admin/artists', {
           method: 'POST',
           headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify(artistData)
         });
-        return await response.json();
+        
+        console.log('AdminContext: Response status:', response.status);
+        console.log('AdminContext: Response headers:', response.headers);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('AdminContext: Error response:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('AdminContext: Success response:', result);
+        return result;
       } catch (error) {
         console.error('Error creating artist:', error);
         throw error;

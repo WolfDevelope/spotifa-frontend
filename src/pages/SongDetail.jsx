@@ -89,6 +89,8 @@ const SongDetail = () => {
         }
 
         if (foundSong) {
+          console.log('🎵 Song loaded:', foundSong);
+          console.log('🎵 Song lyrics:', foundSong.lyrics);
           setSong(foundSong);
           setArtist(foundArtist);
           setAlbum(foundAlbum);
@@ -216,7 +218,7 @@ const SongDetail = () => {
       <div className="w-full bg-[#2d2240] rounded-lg p-6 shadow-inner max-h-64 overflow-y-auto mt-4">
         <h3 className="text-pink-400 text-xl font-bold mb-2">Song Lyrics</h3>
         <div className="text-gray-200 whitespace-pre-line text-base" style={{ fontFamily: 'inherit' }}>
-          {lyricsData[song._id || song.id] || "No lyrics available for this song."}
+          {song.lyrics || lyricsData[song._id || song.id] || "No lyrics available for this song."}
         </div>
       </div>
     </div>

@@ -5,15 +5,16 @@ import { findSongById, findAlbumById, findArtistById } from '../utils/dataProces
 import HeartIcon from './HeartIcon';
 import LoginModal from './LoginModal';
 import { useMusic } from '../context/MusicContext';
+import { useAuth } from '../context/AuthContext';
 
 const { trendingSongs } = data;
 
 const TrendingSongsTable = () => {
   const navigate = useNavigate();
   const { setPlaylistAndPlay } = useMusic();
+  const { currentUser } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [hoveredRow, setHoveredRow] = useState(null);
-  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
   
   // Get full song objects from IDs
   const songs = trendingSongs.map(id => findSongById(id)).filter(Boolean);
@@ -37,6 +38,7 @@ const TrendingSongsTable = () => {
   };
 
   const handleRowClick = (songId) => {
+    console.log('TrendingSongsTable: handleRowClick - currentUser:', currentUser);
     if (currentUser) {
       navigate(`/song/${songId}`);
     } else {

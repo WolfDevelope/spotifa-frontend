@@ -3,17 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import HeartIcon from './HeartIcon';
 import LoginModal from './LoginModal';
 import { useMusic } from '../context/MusicContext';
+import { useAuth } from '../context/AuthContext';
 import musicService from '../services/musicService';
 
 const TrendingSongsTable = () => {
   const navigate = useNavigate();
   const { setPlaylistAndPlay } = useMusic();
+  const { currentUser } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+  // Debug logging
+  console.log('TrendingSongsTable_API render - currentUser:', currentUser);
+  console.log('TrendingSongsTable_API render - localStorage token:', localStorage.getItem('token'));
 
   // Fetch trending songs from API
   useEffect(() => {
@@ -62,6 +67,8 @@ const TrendingSongsTable = () => {
   };
 
   const handleRowClick = (song) => {
+    console.log('TrendingSongsTable_API: handleRowClick - currentUser:', currentUser);
+    console.log('TrendingSongsTable_API: handleRowClick - song._id:', song._id);
     if (currentUser) {
       navigate(`/song/${song._id}`);
     } else {

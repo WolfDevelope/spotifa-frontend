@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import musicService from '../services/musicService';
 import data from '../data'; // Import fallback data
-import LoginModal from './LoginModal';
 
 const MoodPlaylists = () => {
   const navigate = useNavigate();
@@ -11,17 +10,13 @@ const MoodPlaylists = () => {
   const [moodPlaylists, setMoodPlaylists] = useState(data.moodPlaylists); // Set initial state with fallback data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
   const handlePlaylistClick = (playlist) => {
-    if (currentUser) {
-      // Nếu playlist có _id (từ API), sử dụng nó. Nếu không, sử dụng id (từ fallback data)
-      const playlistId = playlist._id || playlist.id;
-      navigate(`/playlist/${playlistId}`);
-    } else {
-      setShowLoginModal(true);
-    }
+    // Tạm thời vô hiệu hóa navigation - chưa có playlist thật sự
+    // TODO: Implement actual playlist functionality
+    console.log('Playlist clicked:', playlist.name || playlist.title);
+    // Không làm gì cả - no action when clicked
   };
 
   // Fetch mood playlists from API
@@ -131,15 +126,6 @@ const MoodPlaylists = () => {
         </div>
     </div>
     
-    {showLoginModal && (
-      <LoginModal
-        onClose={() => setShowLoginModal(false)}
-        onLogin={(user) => {
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          setShowLoginModal(false);
-        }}
-      />
-    )}
   </section>
 );
 };

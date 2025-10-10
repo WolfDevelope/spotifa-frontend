@@ -16,9 +16,10 @@ const MixAlbums = () => {
         // Sử dụng getAllAlbums để lấy mix albums (shuffle kết quả)
         const response = await musicService.getAllAlbums();
         if (response.success) {
-          // Shuffle array để tạo "mix" effect
+          // Shuffle array để tạo "mix" effect, chỉ lấy 10 albums
           const shuffledAlbums = [...response.data].sort(() => Math.random() - 0.5);
-          setAlbums(shuffledAlbums);
+          const mixAlbums = shuffledAlbums.slice(0, 10);
+          setAlbums(mixAlbums);
         } else {
           setError('Failed to load mix albums');
         }

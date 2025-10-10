@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { CreateArtistModal, ConfirmDeleteModal, SuccessModal } from './modals';
 
 const ArtistManagement = () => {
   const { adminAPI } = useAdmin();
@@ -17,14 +18,30 @@ const ArtistManagement = () => {
   });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 12, // Thay đổi từ 10 thành 12
+    limit: 12,
     total: 0,
     pages: 0
   });
 
+  // Modal state for delete confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [artistToDelete, setArtistToDelete] = useState(null);
+  
+  // Modal state for success notification
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successType, setSuccessType] = useState('success');
+
   useEffect(() => {
     fetchArtists();
   }, [pagination.page]);
+
+  // Helper function to show success message
+  const showSuccess = (message, type = "success") => {
+    setSuccessMessage(message);
+    setSuccessType(type);
+    setShowSuccessModal(true);
+  };
 
   const fetchArtists = async () => {
     console.log('🎨 Fetching artists for page:', pagination.page);
@@ -64,21 +81,40 @@ const ArtistManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Prepare data with default avatar if empty
+      const submitData = {
+        ...formData,
+        avatar: formData.avatar?.trim() || '/assets/images/artist-icon.png'
+      };
+      
+      console.log('Submitting artist data:', submitData);
+      
+      // Show success message immediately
+      const action = editingArtist ? 'updated' : 'created';
+      showSuccess(`Artist "${formData.name}" ${action} successfully!`);
+      
+      // Close modal and reset form immediately
+      setShowModal(false);
+      setEditingArtist(null);
+      resetForm();
+      
       let response;
       if (editingArtist) {
-        response = await adminAPI.updateArtist(editingArtist._id, formData);
+        response = await adminAPI.updateArtist(editingArtist._id, submitData);
       } else {
-        response = await adminAPI.createArtist(formData);
+        response = await adminAPI.createArtist(submitData);
       }
 
       if (response.success) {
-        setShowModal(false);
-        setEditingArtist(null);
-        resetForm();
         fetchArtists();
+      } else {
+        setShowSuccessModal(false);
+        alert(`Failed to ${action} artist. Please try again.`);
       }
     } catch (error) {
       console.error('Error saving artist:', error);
+      setShowSuccessModal(false);
+      alert('Error saving artist: ' + error.message);
     }
   };
 
@@ -94,16 +130,28 @@ const ArtistManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this artist?')) {
-      try {
-        const response = await adminAPI.deleteArtist(id);
-        if (response.success) {
-          fetchArtists();
-        }
-      } catch (error) {
-        console.error('Error deleting artist:', error);
+  const handleDelete = (artist) => {
+    setArtistToDelete(artist);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      // Show delete success message immediately
+      showSuccess(`Artist "${artistToDelete.name}" deleted successfully!`, "delete");
+      
+      const response = await adminAPI.deleteArtist(artistToDelete._id);
+      if (response.success) {
+        fetchArtists();
+        console.log(`Artist "${artistToDelete.name}" deleted successfully`);
+      } else {
+        setShowSuccessModal(false);
+        alert('Failed to delete artist. Please try again.');
       }
+    } catch (error) {
+      console.error('Error deleting artist:', error);
+      setShowSuccessModal(false);
+      alert('Error deleting artist: ' + error.message);
     }
   };
 
@@ -123,41 +171,44 @@ const ArtistManagement = () => {
     setShowModal(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-white">Loading artists...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">Artist Management</h2>
+  // Render content based on state
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-white">Loading artists...</div>
         </div>
-        <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-red-400">⚠️</span>
-            <span className="text-red-400 font-medium">Error</span>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-white">Artist Management</h2>
           </div>
-          <p className="text-red-300 mt-2">{error}</p>
-          <button
-            onClick={() => {
-              setError(null);
-              fetchArtists();
-            }}
-            className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors"
-          >
-            Try Again
-          </button>
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-red-400">⚠️</span>
+              <span className="text-red-400 font-medium">Error</span>
+            </div>
+            <p className="text-red-300 mt-2">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                fetchArtists();
+              }}
+              className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
+    // Main content when loaded successfully
+    return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -198,7 +249,7 @@ const ArtistManagement = () => {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(artist._id)}
+                  onClick={() => handleDelete(artist)}
                   className="flex-1 bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
                 >
                   Delete
@@ -271,82 +322,54 @@ const ArtistManagement = () => {
         </button>
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#2d2240] rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-4">
-              {editingArtist ? 'Edit Artist' : 'Add New Artist'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-white mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Avatar URL</label>
-                <input
-                  type="url"
-                  value={formData.avatar}
-                  onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Genre</label>
-                <input
-                  type="text"
-                  value={formData.genre}
-                  onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  placeholder="e.g., Pop, Rock, Hip-Hop"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Country</label>
-                <input
-                  type="text"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-                  placeholder="e.g., USA, UK, Vietnam"
-                />
-              </div>
-              <div>
-                <label className="block text-white mb-1">Biography</label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500 h-24"
-                  placeholder="Artist biography..."
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 rounded hover:opacity-90"
-                >
-                  {editingArtist ? 'Update' : 'Create'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      <CreateArtistModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        editingArtist={editingArtist}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={handleSubmit}
+      />
+
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {renderContent()}
+
+      {/* Modals always render outside of loading/error states */}
+      <CreateArtistModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        editingArtist={editingArtist}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={handleSubmit}
+      />
+
+      <ConfirmDeleteModal
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        onConfirm={confirmDelete}
+        title="Delete Artist"
+        message="Are you sure you want to delete this artist? This action cannot be undone."
+        itemName={artistToDelete?.name}
+        confirmText="Delete Artist"
+        cancelText="Cancel"
+      />
+
+      <SuccessModal
+        showModal={showSuccessModal}
+        setShowModal={setShowSuccessModal}
+        title={successType === "delete" ? "Deleted!" : "Success!"}
+        message={successMessage}
+        type={successType}
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
+    </>
   );
 };
 

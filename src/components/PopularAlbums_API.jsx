@@ -16,8 +16,10 @@ const PopularAlbums = () => {
         // Sử dụng getAllAlbums để lấy popular albums (có thể sort theo plays hoặc ratings)
         const response = await musicService.getAllAlbums();
         if (response.success) {
-          // Sắp xếp theo thứ tự để tạo "popular" effect (giữ nguyên thứ tự từ API)
-          setAlbums(response.data);
+          // Lấy random từ toàn bộ albums, chỉ hiển thị 10 albums
+          const shuffledAlbums = response.data.sort(() => Math.random() - 0.5);
+          const popularAlbums = shuffledAlbums.slice(0, 10);
+          setAlbums(popularAlbums);
         } else {
           setError('Failed to load popular albums');
         }
