@@ -6,7 +6,7 @@ import PLAYLIST_API from '../services/playlist';
 import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
 import DeletePlaylistModal from '../components/DeletePlaylistModal';
 import data from '../data';
-import { toast } from 'react-toastify';
+import { usePlaylistNotification } from '../context/PlaylistNotificationContext';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
 const PlaylistDetail = () => {
@@ -15,6 +15,7 @@ const PlaylistDetail = () => {
   const location = useLocation();
   const { playlists, isInitialized, removePlaylist } = usePlaylist();
   const { setPlaylistAndPlay, currentPlaylist, currentTrackIndex, isPlaying: musicIsPlaying, setIsPlaying } = useMusic();
+  const { showSuccess, showError } = usePlaylistNotification();
   const [playlist, setPlaylist] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const isDeleting = useRef(false);
@@ -69,10 +70,10 @@ const PlaylistDetail = () => {
         
         console.error('Error loading playlist:', error);
         if (error.message === 'Playlist not found') {
-          // Don't show toast for deleted playlists, just redirect silently
+          // Don't show notification for deleted playlists, just redirect silently
           console.log('Playlist was deleted, redirecting silently...');
         } else {
-          toast.error('Failed to load playlist');
+          showError('Failed to load playlist. Please try again.', 'Load Failed');
         }
         navigate('/your-playlists', { replace: true });
       }
@@ -89,7 +90,7 @@ const PlaylistDetail = () => {
 
   const handlePlayClick = () => {
     if (!playlist || !playlist.songs || playlist.songs.length === 0) {
-      toast.error('No songs in this playlist to play');
+      showError('This playlist is empty. Add some songs to start playing!', 'No Songs');
       return;
     }
 
@@ -117,13 +118,13 @@ const PlaylistDetail = () => {
       setShowDeleteModal(false);
       await PLAYLIST_API.deletePlaylist(id);
       removePlaylist(id);
-      toast.success('Playlist deleted successfully');
+      showSuccess(`"${playlist?.name || 'Playlist'}" has been deleted successfully.`, 'Playlist Deleted');
       // Navigate immediately and prevent further loading
       navigate('/your-playlists', { replace: true });
     } catch (error) {
       isDeleting.current = false; // Reset on error
       console.error('Error deleting playlist:', error);
-      toast.error('Failed to delete playlist');
+      showError('Failed to delete playlist. Please try again.', 'Delete Failed');
     }
   };
 

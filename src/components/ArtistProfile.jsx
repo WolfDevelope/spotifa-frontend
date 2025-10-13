@@ -1,15 +1,28 @@
 import React from 'react';
 import { useMusic } from '../context/MusicContext';
+import musicService from '../services/musicService';
 import data from '../data';
 
-const ArtistProfile = ({ artist }) => {
+const ArtistProfile = ({ artist, songs = [] }) => {
     const { setPlaylistAndPlay } = useMusic();
-    const handlePlay = () => {
-      // Filter songs by the current artist
-      const artistSongs = data.songs.filter(song => song.artistId === artist.id);
-      
-      if (artistSongs.length > 0) {
-        setPlaylistAndPlay(artistSongs, 0); // Play from the first song
+    const handlePlay = async () => {
+      if (songs.length > 0) {
+        // Increment play count for first song if it has _id (from API)
+        const firstSong = songs[0];
+        if (firstSong._id) {
+          try {
+            await musicService.incrementPlayCount(firstSong._id);
+          } catch (err) {
+            console.error('Failed to increment play count:', err);
+          }
+        }
+        setPlaylistAndPlay(songs, 0); // Play from the first song
+      } else {
+        // Fallback to local data if no songs provided
+        const artistSongs = data.songs.filter(song => song.artistId === (artist._id || artist.id));
+        if (artistSongs.length > 0) {
+          setPlaylistAndPlay(artistSongs, 0);
+        }
       }
     };
 

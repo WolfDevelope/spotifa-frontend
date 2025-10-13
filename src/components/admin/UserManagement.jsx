@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
+import { useAuth } from '../../context/AuthContext';
+import { ConfirmDeleteModal, SuccessModal } from './modals';
 
 const UserManagement = () => {
   const { adminAPI } = useAdmin();
+  const { currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -12,9 +15,25 @@ const UserManagement = () => {
     pages: 0
   });
 
+  // Modal states for delete confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  
+  // Modal state for success notification
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successType, setSuccessType] = useState('success');
+
   useEffect(() => {
     fetchUsers();
   }, [pagination.page]);
+
+  // Helper function to show success message
+  const showSuccess = (message, type = "success") => {
+    setSuccessMessage(message);
+    setSuccessType(type);
+    setShowSuccessModal(true);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -36,12 +55,54 @@ const UserManagement = () => {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
+      // Prevent admin from removing their own admin role
+      if (currentUser && currentUser.id === userId && currentUser.role === 'admin' && newRole !== 'admin') {
+        alert('You cannot remove admin role from your own account!');
+        return;
+      }
+
       const response = await adminAPI.updateUserRole(userId, newRole);
       if (response.success) {
+        const user = users.find(u => u._id === userId);
+        showSuccess(`User "${user?.name || user?.email}" role updated to ${newRole} successfully!`);
         fetchUsers(); // Refresh the list
+      } else {
+        alert('Failed to update user role. Please try again.');
       }
     } catch (error) {
       console.error('Error updating user role:', error);
+      alert('Error updating user role: ' + error.message);
+    }
+  };
+
+  const handleDelete = (user) => {
+    // Prevent admin from deleting their own account
+    if (currentUser && currentUser.id === user._id) {
+      alert('You cannot delete your own account!');
+      return;
+    }
+    
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      // Show delete success message immediately
+      showSuccess(`User "${userToDelete.name || userToDelete.email}" deleted successfully!`, "delete");
+      
+      const response = await adminAPI.deleteUser(userToDelete._id);
+      if (response.success) {
+        fetchUsers();
+        console.log(`User "${userToDelete.name || userToDelete.email}" deleted successfully`);
+      } else {
+        setShowSuccessModal(false);
+        alert('Failed to delete user. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      setShowSuccessModal(false);
+      alert('Error deleting user: ' + error.message);
     }
   };
 
@@ -120,7 +181,16 @@ const UserManagement = () => {
                     <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                      className={`px-2 py-1 rounded text-sm ${getRoleColor(user.role)} border-none outline-none`}
+                      disabled={currentUser && currentUser.id === user._id && user.role === 'admin'}
+                      className={`px-2 py-1 rounded text-sm ${getRoleColor(user.role)} border-none outline-none ${
+                        currentUser && currentUser.id === user._id && user.role === 'admin' 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : ''
+                      }`}
+                      title={currentUser && currentUser.id === user._id && user.role === 'admin' 
+                        ? 'You cannot change your own admin role' 
+                        : ''
+                      }
                     >
                       <option value="user">User</option>
                       <option value="artist">Artist</option>
@@ -147,6 +217,21 @@ const UserManagement = () => {
                         className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
                       >
                         View
+                      </button>
+                      <button
+                        onClick={() => handleDelete(user)}
+                        disabled={currentUser && currentUser.id === user._id}
+                        className={`px-3 py-1 rounded text-sm ${
+                          currentUser && currentUser.id === user._id
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed opacity-50'
+                            : 'bg-red-500 text-white hover:bg-red-600'
+                        }`}
+                        title={currentUser && currentUser.id === user._id 
+                          ? 'You cannot delete your own account' 
+                          : 'Delete user account'
+                        }
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>
@@ -289,6 +374,29 @@ const UserManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        showModal={showDeleteModal}
+        setShowModal={setShowDeleteModal}
+        onConfirm={confirmDelete}
+        title="Delete User Account"
+        message="Are you sure you want to delete this user account? This action cannot be undone and will remove all user data."
+        itemName={userToDelete?.name || userToDelete?.email}
+        confirmText="Delete User"
+        cancelText="Cancel"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        showModal={showSuccessModal}
+        setShowModal={setShowSuccessModal}
+        title={successType === "delete" ? "Deleted!" : "Success!"}
+        message={successMessage}
+        type={successType}
+        autoClose={true}
+        autoCloseDelay={3000}
+      />
     </div>
   );
 };

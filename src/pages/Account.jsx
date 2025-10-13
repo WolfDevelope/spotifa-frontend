@@ -32,7 +32,7 @@ const Account = () => {
         genre: userData.genre || ''
       });
     } catch (error) {
-      setMessage({ text: 'Không thể tải thông tin tài khoản', type: 'error' });
+      setMessage({ text: 'Failed to load user data', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -59,14 +59,14 @@ const Account = () => {
     try {
       const result = await updateProfile(user); // dùng context 
       if (result && result.success !== false) {
-        setMessage({ text: 'Cập nhật thông tin thành công!', type: 'success' });
+        setMessage({ text: 'Update profile successfully!', type: 'success' });
         setIsEditing(false);
         fetchUserData();
       } else {
-        throw new Error(result?.error || 'Cập nhật thất bại');
+        throw new Error(result?.error || 'Update failed');
       }
     } catch (error) {
-      setMessage({ text: error.message || 'Có lỗi xảy ra khi cập nhật thông tin', type: 'error' });
+      setMessage({ text: error.message || 'Failed to update profile', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -77,17 +77,17 @@ const Account = () => {
     try {
       const result = await deleteAccount(); // Use context method instead of direct API call
       if (result && result.success !== false) {
-        setMessage({ text: 'Tài khoản đã được xóa thành công!', type: 'success' });
+        setMessage({ text: 'Account deleted successfully!', type: 'success' });
         
         // Force logout and redirect after showing success message
         setTimeout(() => {
           window.location.href = '/login'; // Force full page reload to clear all state
         }, 2000);
       } else {
-        throw new Error(result?.error || 'Xóa tài khoản thất bại');
+        throw new Error(result?.error || 'Delete failed');
       }
     } catch (error) {
-      setMessage({ text: error.message || 'Có lỗi xảy ra khi xóa tài khoản', type: 'error' });
+      setMessage({ text: error.message || 'Failed to delete account', type: 'error' });
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -111,13 +111,13 @@ const Account = () => {
         
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Tài khoản của bạn</h1>
+            <h1 className="text-3xl font-bold">Your Account</h1>
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
                 className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-lg transition-colors"
               >
-                Chỉnh sửa thông tin
+                Edit Information
               </button>
             ) : (
               <div className="flex gap-2">
@@ -129,14 +129,14 @@ const Account = () => {
                   }}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={isSaving}
                   className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  {isSaving ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
             )}
@@ -180,7 +180,7 @@ const Account = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Số điện thoại</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
                     {isEditing ? (
                       <input
                         type="tel"
@@ -190,12 +190,12 @@ const Account = () => {
                         className="w-full px-4 py-2 rounded-lg bg-[#3d2e4a] text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
                       />
                     ) : (
-                      <p>{user.phone || 'Chưa cập nhật'}</p>
+                      <p>{user.phone || 'Not updated'}</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Giới thiệu</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">About</label>
                     {isEditing ? (
                       <textarea
                         name="about"
@@ -205,14 +205,14 @@ const Account = () => {
                         className="w-full px-4 py-2 rounded-lg bg-[#3d2e4a] text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
                       />
                     ) : (
-                      <p className="whitespace-pre-line">{user.about || 'Chưa có giới thiệu'}</p>
+                      <p className="whitespace-pre-line">{user.about || 'Not updated'}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Thể loại yêu thích</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Favorite genre</label>
                     {isEditing ? (
                       <input
                         type="text"
@@ -220,10 +220,10 @@ const Account = () => {
                         value={user.genre}
                         onChange={handleChange}
                         className="w-full px-4 py-2 rounded-lg bg-[#3d2e4a] text-white focus:outline-none focus:ring-2 focus:ring-pink-400"
-                        placeholder="Ví dụ: Pop, Rock, EDM..."
+                        placeholder="Example: Pop, Rock, EDM..."
                       />
                     ) : (
-                      <p>{user.genre || 'Chưa cập nhật'}</p>
+                      <p>{user.genre || 'Not updated'}</p>
                     )}
                   </div>
                 </div>
@@ -238,7 +238,7 @@ const Account = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Xóa tài khoản
+                  Delete Account
                 </button>
               </div>
             </div>
@@ -249,9 +249,9 @@ const Account = () => {
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-[#2d2240] rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-bold text-white mb-4">Xác nhận xóa tài khoản</h3>
+              <h3 className="text-xl font-bold text-white mb-4">Delete Account</h3>
               <p className="text-gray-300 mb-6">
-                Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác và tất cả dữ liệu của bạn sẽ bị mất vĩnh viễn.
+                Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.
               </p>
               <div className="flex gap-4 justify-end">
                 <button
@@ -259,7 +259,7 @@ const Account = () => {
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                   disabled={isDeleting}
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   onClick={handleDeleteAccount}
@@ -269,10 +269,10 @@ const Account = () => {
                   {isDeleting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      Đang xóa...
+                      Deleting...
                     </>
                   ) : (
-                    'Xóa tài khoản'
+                    'Delete Account'
                   )}
                 </button>
               </div>

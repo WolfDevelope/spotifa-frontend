@@ -2,7 +2,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AUTH_API from '../services/auth';
-import { toast } from 'react-toastify';
+import { useUserNotification } from '../hooks/useUserNotification';
+import UserNotificationModal from '../components/UserNotificationModal';
 
 const AuthContext = createContext();
 
@@ -11,6 +12,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  
+  // User notification modal
+  const {
+    showNotification,
+    setShowNotification,
+    notificationData,
+    showSuccess,
+    showError,
+    showInfo
+  } = useUserNotification();
 
   // Check if user is logged in on initial load
   useEffect(() => {
@@ -37,12 +48,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const data = await AUTH_API.register(userData);
-      toast.success('Registration successful! Please check your email to verify your account.');
+      showSuccess('Registration successful! Please check your email to verify your account.', 'Registration Complete');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Registration failed. Please try again.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showError(errorMessage, 'Registration Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -57,12 +68,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       setCurrentUser(user);
       
-      toast.success('Logged in successfully!');
+      showSuccess('Welcome back! You have been logged in successfully.', 'Login Successful');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Login failed. Please check your credentials.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      showError(errorMessage, 'Login Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -77,7 +88,7 @@ export const AuthProvider = ({ children }) => {
       // Clear auth state
       localStorage.removeItem('token');
       setCurrentUser(null);
-      toast.success('Logged out successfully');
+      showInfo('You have been logged out successfully. See you again!', 'Logged Out');
       navigate('/login');
     }
   };
@@ -89,11 +100,11 @@ export const AuthProvider = ({ children }) => {
       // Fetch user mới nhất từ backend để đồng bộ
       const freshUser = await AUTH_API.getCurrentUser();
       setCurrentUser(freshUser.data);
-      toast.success('Profile updated successfully!');
+      showSuccess('Your profile has been updated successfully!', 'Profile Updated');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Failed to update profile';
-      toast.error(errorMessage);
+      showError(errorMessage, 'Update Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -107,11 +118,11 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       localStorage.removeItem('token');
       localStorage.removeItem('currentUser');
-      toast.success('Account deleted successfully');
+      showSuccess('Your account has been deleted successfully. We\'re sad to see you go!', 'Account Deleted');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Failed to delete account';
-      toast.error(errorMessage);
+      showError(errorMessage, 'Deletion Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -120,11 +131,11 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       await AUTH_API.forgotPassword(email);
-      toast.success('Password reset instructions sent to your email');
+      showInfo('Password reset instructions have been sent to your email. Please check your inbox.', 'Reset Email Sent');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Failed to send password reset email';
-      toast.error(errorMessage);
+      showError(errorMessage, 'Reset Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -133,11 +144,11 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (token, newPassword, passwordConfirm) => {
     try {
       await AUTH_API.resetPassword(token, newPassword, passwordConfirm);
-      toast.success('Password reset successful! You can now log in with your new password.');
+      showSuccess('Password reset successful! You can now log in with your new password.', 'Password Reset Complete');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Failed to reset password';
-      toast.error(errorMessage);
+      showError(errorMessage, 'Reset Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -146,11 +157,11 @@ export const AuthProvider = ({ children }) => {
   const resendVerificationEmail = async (email) => {
     try {
       await AUTH_API.resendVerificationEmail(email);
-      toast.success('Verification email sent! Please check your inbox.');
+      showInfo('Verification email sent! Please check your inbox and follow the instructions.', 'Verification Email Sent');
       return { success: true };
     } catch (err) {
       const errorMessage = err.message || 'Failed to resend verification email';
-      toast.error(errorMessage);
+      showError(errorMessage, 'Resend Failed');
       return { success: false, error: errorMessage };
     }
   };
@@ -175,6 +186,17 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
+      
+      {/* User Notification Modal */}
+      <UserNotificationModal
+        showModal={showNotification}
+        setShowModal={setShowNotification}
+        title={notificationData.title}
+        message={notificationData.message}
+        type={notificationData.type}
+        autoClose={true}
+        autoCloseDelay={4000}
+      />
     </AuthContext.Provider>
   );
 };

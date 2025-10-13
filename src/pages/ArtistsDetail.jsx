@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { FaArrowLeft } from 'react-icons/fa';
 
 import ArtistProfile from "../components/ArtistProfile";
 import TrackList from "../components/TrackList";
@@ -139,9 +140,17 @@ const ArtistsDetail = () => {
   return (
     <div className="bg-gradient-to-b from-[#22172b] to-[#3d2a3f] min-h-screen text-white font-sans flex">
       
-      <main className="flex-1 px-8 py-6" style={{ marginLeft: "16rem" }}>
+      <main className="flex-1 px-8 py-6 pt-20 relative" style={{ marginLeft: "16rem" }}>
         
-          <ArtistProfile artist={artist} />
+        {/* Nút quay lại */}
+        <button
+          className="absolute top-4 left-4 flex items-center gap-2 text-gray-400 hover:text-pink-400 transition z-10 bg-[#241a33]/80 px-3 py-1 rounded"
+          onClick={() => navigate(-1)}
+        >
+          <FaArrowLeft /> Back
+        </button>
+
+        <ArtistProfile artist={artist} songs={songs} />
           <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Popular <span className="text-pink-400">Tracks</span></h2>
             <TrackList tracks={songs} artist={artist} />

@@ -6,7 +6,7 @@ import PLAYLIST_API from '../services/playlist';
 import { enrichPlaylistWithSongs } from '../utils/playlistUtils';
 import musicService from '../services/musicService';
 import data from '../data';
-import { toast } from 'react-toastify';
+import { usePlaylistNotification } from '../context/PlaylistNotificationContext';
 import '../assets/styles/main.css';
 
 const CreatePlaylist = () => {
@@ -14,6 +14,7 @@ const CreatePlaylist = () => {
   const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const { playlists, addPlaylist, updatePlaylist } = usePlaylist();
+  const { showSuccess, showError } = usePlaylistNotification();
   
   const editPlaylistId = searchParams.get('edit');
   const isEditMode = !!editPlaylistId;
@@ -31,7 +32,6 @@ const CreatePlaylist = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   // Load all data from API
   useEffect(() => {
@@ -100,7 +100,7 @@ const CreatePlaylist = () => {
             });
           } catch (error) {
             console.error('Error loading playlist for edit:', error);
-            toast.error('Failed to load playlist for editing');
+            showError('Failed to load playlist for editing. Redirecting to your playlists.', 'Load Failed');
             navigate('/your-playlists');
           }
         };
@@ -186,17 +186,17 @@ const CreatePlaylist = () => {
 
   const handleSavePlaylist = async () => {
     if (!playlistData.name.trim()) {
-      toast.error('Please enter a playlist name');
+      showError('Please enter a playlist name to continue.', 'Name Required');
       return;
     }
     
     if (playlistData.songs.length === 0) {
-      toast.error('Please add at least one song to the playlist');
+      showError('Please add at least one song to the playlist.', 'Songs Required');
       return;
     }
     
     if (!currentUser) {
-      toast.error('Please login to create playlists');
+      showError('Please login to create playlists.', 'Login Required');
       return;
     }
     
@@ -215,7 +215,7 @@ const CreatePlaylist = () => {
         if (response.success) {
           // Update the playlist in context with enriched data
           await updatePlaylist(editPlaylistId, response.playlist);
-          toast.success('Playlist updated successfully!');
+          showSuccess(`"${playlistData.name}" has been updated successfully!`, 'Playlist Updated');
           // Navigate back with state to force refresh
           navigate(`/playlist/${editPlaylistId}`, { 
             state: { forceRefresh: true },
@@ -227,13 +227,13 @@ const CreatePlaylist = () => {
         const response = await PLAYLIST_API.createPlaylist(playlistPayload);
         if (response.success) {
           await addPlaylist(response.playlist);
-          toast.success('Playlist created successfully!');
+          showSuccess(`"${playlistData.name}" has been created successfully!`, 'Playlist Created');
           navigate('/your-playlists');
         }
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} playlist:`, error);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} playlist`);
+      showError(`Failed to ${isEditMode ? 'update' : 'create'} playlist. Please try again.`, `${isEditMode ? 'Update' : 'Create'} Failed`);
     } finally {
       setIsSaving(false);
     }
@@ -552,15 +552,6 @@ const CreatePlaylist = () => {
         </div>
       </div>
       
-      {/* Success Message */}
-      {showSuccess && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          Playlist saved successfully!
-        </div>
-      )}
     </div>
   );
 };

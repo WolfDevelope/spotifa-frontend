@@ -3,12 +3,13 @@ import { FaHeart, FaRegHeart } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { toggleFavorite } from '../services/favorites';
-import { toast } from 'react-toastify';
+import { useFavoritesNotification } from '../context/FavoritesNotificationContext';
 
 const HeartIcon = ({ songId, size = 20 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useAuth();
   const { isFavorite: contextIsFavorite, addToFavorites, removeFromFavorites } = useFavorites();
+  const { showSuccess, showError } = useFavoritesNotification();
 
   const isFavorite = contextIsFavorite(songId);
 
@@ -37,11 +38,11 @@ const HeartIcon = ({ songId, size = 20 }) => {
         if (response.isFavorite) {
           console.log('Added to favorites:', songId);
           addToFavorites(songId);
-          toast.success('Added to favorites');
+          showSuccess('Song added to your favorites successfully!', 'Added to Favorites');
         } else {
           console.log('Removed from favorites:', songId);
           removeFromFavorites(songId);
-          toast.success('Removed from favorites');
+          showSuccess('Song removed from your favorites.', 'Removed from Favorites');
         }
         
         // Also refresh from API to ensure consistency
@@ -51,7 +52,7 @@ const HeartIcon = ({ songId, size = 20 }) => {
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      toast.error('Failed to update favorites');
+      showError('Failed to update favorites. Please try again.', 'Update Failed');
     } finally {
       setIsLoading(false);
     }

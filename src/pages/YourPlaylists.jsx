@@ -4,12 +4,13 @@ import { usePlaylist } from '../context/PlaylistContext';
 import { useAuth } from '../context/AuthContext';
 import PLAYLIST_API from '../services/playlist';
 import DeletePlaylistModal from '../components/DeletePlaylistModal';
-import { toast } from 'react-toastify';
+import { usePlaylistNotification } from '../context/PlaylistNotificationContext';
 
 const YourPlaylists = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { playlists, isLoading, removePlaylist } = usePlaylist();
+  const { showSuccess, showError } = usePlaylistNotification();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [playlistToDelete, setPlaylistToDelete] = useState(null);
 
@@ -34,12 +35,12 @@ const YourPlaylists = () => {
     try {
       await PLAYLIST_API.deletePlaylist(playlistToDelete._id);
       removePlaylist(playlistToDelete._id);
-      toast.success('Playlist deleted successfully');
+      showSuccess(`"${playlistToDelete.name}" has been deleted successfully.`, 'Playlist Deleted');
       setShowDeleteModal(false);
       setPlaylistToDelete(null);
     } catch (error) {
       console.error('Error deleting playlist:', error);
-      toast.error('Failed to delete playlist');
+      showError('Failed to delete playlist. Please try again.', 'Delete Failed');
     }
   };
 

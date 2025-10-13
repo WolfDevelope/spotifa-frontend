@@ -268,6 +268,20 @@ export const AdminProvider = ({ children }) => {
       }
     },
 
+    deleteUser: async (id) => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        });
+        return await response.json();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+      }
+    },
+
     // Dashboard Stats
     getDashboardStats: async () => {
       try {

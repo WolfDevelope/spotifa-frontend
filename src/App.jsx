@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { useMusic } from './context/MusicContext';
 import { PlaylistProvider } from './context/PlaylistContext';
 import { useAdmin } from './context/AdminContext';
+import { FavoritesNotificationProvider } from './context/FavoritesNotificationContext';
+import { PlaylistNotificationProvider } from './context/PlaylistNotificationContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import musicService from './services/musicService';
@@ -78,7 +80,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#22172b] to-[#3d2a3f]">
-      <PlaylistProvider>
+      <PlaylistNotificationProvider>
+        <FavoritesNotificationProvider>
+          <PlaylistProvider>
         <ScrollToTop />
         <Header
           user={currentUser}
@@ -134,7 +138,9 @@ const App = () => {
         {shouldShowMusicPlayer && <MusicPlayer />}
         <ToastContainer position="bottom-right" autoClose={3000} />
       </div>
-      </PlaylistProvider>
+          </PlaylistProvider>
+        </FavoritesNotificationProvider>
+      </PlaylistNotificationProvider>
     </div>
   );
 }

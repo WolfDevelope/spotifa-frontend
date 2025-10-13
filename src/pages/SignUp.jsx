@@ -39,14 +39,14 @@ const SignUp = () => {
       if (response && response.success) {
         navigate('/login', { 
           state: { 
-            message: 'Đăng ký thành công! Vui lòng đăng nhập.' 
+            message: 'Sign up successfully! Please log in.' 
           } 
         });
         return { success: true };
       } else {
-        let errorMessage = response?.message || 'Đã xảy ra lỗi khi đăng ký';
+        let errorMessage = response?.message || 'An error occurred while signing up';
         if (errorMessage.includes('already exists')) {
-          errorMessage = 'Email hoặc tên đăng nhập đã được sử dụng';
+          errorMessage = 'Email or username already exists';
         }
         return { success: false, message: errorMessage };
       }
@@ -54,7 +54,7 @@ const SignUp = () => {
       console.error('API Error:', error);
       return { 
         success: false, 
-        message: error.message || 'Không thể kết nối đến máy chủ' 
+        message: error.message || 'Unable to connect to the server' 
       };
     }
   };
@@ -66,22 +66,22 @@ const SignUp = () => {
   
     // Basic validation
     if (!form.name.trim()) {
-      setError('Vui lòng nhập tên của bạn');
+      setError('Please enter your name');
       return;
     }
   
     if (!form.email.trim()) {
-      setError('Vui lòng nhập địa chỉ email');
+      setError('Please enter your email address');
       return;
     }
   
     if (form.password.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự');
+      setError('Password must be at least 8 characters long');
       return;
     }
   
     if (form.password !== form.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError('Password confirmation does not match');
       return;
     }
   
@@ -98,7 +98,7 @@ const SignUp = () => {
         setError(result.message);
       }
     } catch (err) {
-      setError('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      setError('An error occurred. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +150,7 @@ const SignUp = () => {
               <input
                 name="password"
                 type="password"
-                placeholder="Password (tối thiểu 8 ký tự)"
+                placeholder="Password (at least 8 characters)"
                 value={form.password}
                 onChange={handleChange}
                 className="w-full px-5 py-3 rounded-lg bg-[#61235f]/60 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
