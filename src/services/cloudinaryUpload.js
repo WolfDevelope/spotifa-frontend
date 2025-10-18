@@ -27,8 +27,17 @@ class CloudinaryUploadService {
         }
       });
 
+      const token = this.getToken();
+      const url = `${API_URL}/songs/upload`;
+      
+      console.log('🔍 Upload Debug Info:');
+      console.log('- API URL:', url);
+      console.log('- Has Token:', !!token);
+      console.log('- Token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      console.log('- File:', file.name, file.size, 'bytes');
+
       // Gửi request
-      const response = await axios.post(`${API_URL}/songs/upload`, formData, {
+      const response = await axios.post(url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${this.getToken()}`
@@ -201,6 +210,11 @@ class CloudinaryUploadService {
    * @returns {string} JWT token
    */
   getToken() {
+    // Thử lấy token trực tiếp trước
+    const token = localStorage.getItem('token');
+    if (token) return token;
+    
+    // Nếu không có, thử lấy từ user object
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     return user.token || '';
   }
