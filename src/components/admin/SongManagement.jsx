@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import { CreateSongModal, LittleCreateArtistModal, LittleCreateAlbumModal, ConfirmDeleteModal, SuccessModal } from './modals';
+import UploadSongModal from './modals/UploadSongModal';
 
 const SongManagement = () => {
   const { adminAPI } = useAdmin();
@@ -37,6 +38,9 @@ const SongManagement = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [successType, setSuccessType] = useState('success');
+  
+  // Modal state for upload song from computer
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -378,6 +382,28 @@ const SongManagement = () => {
     loadDropdownData(); // Load dropdown data when creating
     setShowModal(true);
   };
+  
+  // Handle upload success from UploadSongModal
+  const handleUploadSuccess = (uploadedSong) => {
+    console.log('Upload success:', uploadedSong);
+    
+    // Tự động điền thông tin vào form
+    setFormData(prev => ({
+      ...prev,
+      src: uploadedSong.src || '',
+      title: uploadedSong.title || prev.title,
+      duration: uploadedSong.duration || prev.duration,
+      artist: uploadedSong.artist || prev.artist,
+      album: uploadedSong.album || prev.album,
+      lyrics: uploadedSong.lyrics || prev.lyrics
+    }));
+    
+    // Đóng upload modal
+    setShowUploadModal(false);
+    
+    // Hiển thị thông báo thành công
+    showSuccess('File uploaded successfully! URL has been filled in.');
+  };
 
   // Render content based on state
   const renderContent = () => {
@@ -576,6 +602,15 @@ const SongManagement = () => {
         loadingDropdowns={loadingDropdowns}
         openArtistModal={openArtistModal}
         openAlbumModal={openAlbumModal}
+        onOpenUploadModal={() => setShowUploadModal(true)}
+      />
+      
+      <UploadSongModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={handleUploadSuccess}
+        artists={artists}
+        albums={albums}
       />
 
       <LittleCreateArtistModal

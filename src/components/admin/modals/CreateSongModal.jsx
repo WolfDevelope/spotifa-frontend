@@ -11,7 +11,8 @@ const CreateSongModal = ({
   albums,
   loadingDropdowns,
   openArtistModal,
-  openAlbumModal
+  openAlbumModal,
+  onOpenUploadModal
 }) => {
   if (!showModal) return null;
 
@@ -109,13 +110,25 @@ const CreateSongModal = ({
           
           <div>
             <label className="block text-white mb-1">Audio Source URL</label>
-            <input
-              type="text"
-              value={formData.src}
-              onChange={(e) => setFormData({ ...formData, src: e.target.value })}
-              className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
-              placeholder="e.g., /assets/audio/song.mp3 or https://example.com/song.mp3"
-            />
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={formData.src}
+                onChange={(e) => setFormData({ ...formData, src: e.target.value })}
+                className="w-full p-2 bg-[#3a2d52] text-white rounded border border-gray-600 focus:border-purple-500"
+                placeholder="e.g., /assets/audio/song.mp3 or https://example.com/song.mp3"
+              />
+              <button
+                type="button"
+                onClick={onOpenUploadModal}
+                className="w-full text-sm bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white py-2 px-3 rounded transition-opacity flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Upload from Computer (Cloudinary)
+              </button>
+            </div>
           </div>
           
           <div>

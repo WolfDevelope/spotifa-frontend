@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import cloudinaryUploadService from '../../services/cloudinaryUpload';
+import cloudinaryUploadService from '../../../services/cloudinaryUpload';
 
 const UploadSongModal = ({ isOpen, onClose, onSuccess, artists, albums }) => {
   const [formData, setFormData] = useState({
